@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SailSense Dashboard</title>
+<title>SailSense Hub</title>
 <link rel="icon" href="logo.png">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -26,12 +26,12 @@ header {
   padding: 0 1.25rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
 }
 header h1 { font-size: 1.05rem; font-weight: 600; padding: 0.9rem 0; }
 #status-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--red); flex-shrink: 0;
+  margin-right: 0.75rem;
   transition: background 0.3s;
 }
 #status-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
@@ -100,10 +100,11 @@ nav button:hover:not(.active) { color: var(--text); }
 .breaker {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 8px; padding: 0.8rem 1rem;
-  display: flex; align-items: center; gap: 0.75rem;
+  display: flex; align-items: center;
 }
 .breaker-dot {
   width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+  margin-right: 0.75rem;
   background: #374151; transition: background 0.3s, box-shadow 0.3s;
 }
 .breaker-dot.on  { background: var(--green); box-shadow: 0 0 6px var(--green); }
@@ -122,10 +123,11 @@ nav button:hover:not(.active) { color: var(--text); }
 .light-item {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 6px; padding: 0.6rem 0.875rem;
-  display: flex; align-items: center; gap: 0.6rem;
+  display: flex; align-items: center;
 }
 .light-dot {
   width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  margin-right: 0.6rem;
   background: #374151; transition: background 0.3s, box-shadow 0.3s;
 }
 .light-dot.on { background: #fbbf24; box-shadow: 0 0 7px #fbbf24; }
@@ -138,7 +140,7 @@ nav button:hover:not(.active) { color: var(--text); }
 
 <header>
   <div id="status-dot"></div>
-  <h1>SailSense Dashboard</h1>
+  <h1 id="vessel-name">SailSense Hub</h1>
 </header>
 
 <nav>
@@ -157,6 +159,10 @@ nav button:hover:not(.active) { color: var(--text); }
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const POLL_MS = 3000;
+
+// Auth token injected by signalk-navico-embedder (window.SK_TOKEN), or absent
+// when accessed directly from a browser that already has a SK session cookie.
+const SK_TOKEN = (window.SK_TOKEN !== undefined) ? window.SK_TOKEN : null;
 
 const BREAKERS = [
   'Cockpit fridge', 'Electronic', 'Fans', 'Fresh water rinsing pump',
@@ -233,9 +239,23 @@ function flatten(obj, prefix) {
   }
 }
 
+async function fetchVesselName() {
+  try {
+    const headers = SK_TOKEN ? { 'Authorization': 'Bearer ' + SK_TOKEN } : {};
+    const r = await fetch('/signalk/v1/api/vessels/self/name', { credentials: 'include', headers: headers });
+    if (!r.ok) return;
+    const name = await r.json();
+    const label = (typeof name === 'string' && name.trim()) ? name.trim() : 'SailSense Hub';
+    document.title = label;
+    document.getElementById('vessel-name').textContent = label;
+  } catch (_) {}
+}
+
 async function fetchAll() {
   try {
-    const r = await fetch('/signalk/v1/api/vessels/self/sailsense', { credentials: 'include' });
+    const headers = SK_TOKEN ? { 'Authorization': 'Bearer ' + SK_TOKEN } : {};
+    const r = await fetch('/signalk/v1/api/vessels/self/sailsense', { credentials: 'include', headers: headers });
+    if (r.status === 401) { showAuthError(); return; }
     if (!r.ok) return;
     const data = await r.json();
     flatten(data, 'sailsense');
@@ -243,11 +263,22 @@ async function fetchAll() {
   } catch (_) { /* keep polling */ }
 }
 
+function showAuthError() {
+  var msg = '<p class="placeholder">Signal K authentication required — no data available.<br>'
+    + 'In Signal K admin go to <strong>Security</strong> and either enable '
+    + '<em>Allow Read-Only Access</em>, or add a token to the Navico MFD Embedder config.</p>';
+  document.getElementById('tab-power').innerHTML    = msg;
+  document.getElementById('tab-tanks').innerHTML    = msg;
+  document.getElementById('tab-breakers').innerHTML = msg;
+  document.getElementById('tab-lights').innerHTML   = msg;
+}
+
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(`${proto}//${location.host}/signalk/v1/stream?subscribe=none`);
+  const tokenParam = SK_TOKEN ? '&token=' + encodeURIComponent(SK_TOKEN) : '';
+  const ws = new WebSocket(proto + '//' + location.host + '/signalk/v1/stream?subscribe=none' + tokenParam);
 
   ws.onopen = () => {
     setConnected(true);
@@ -359,7 +390,7 @@ function renderTankCard(label, levelPrefix, type) {
       <span class="tank-pct">${display != null ? display + '%' : '–'}</span>
     </div>
     <div class="tank-track">
-      <div class="tank-fill ${type}" style="width:${Math.min(display ?? 0, 100)}%"></div>
+      <div class="tank-fill ${type}" style="width:${Math.min(display != null ? display : 0, 100)}%"></div>
     </div>
     <div class="tank-litres">${litres != null ? fmt(litres) + ' L' : 'No data'}</div>
   </div>`;
@@ -458,6 +489,7 @@ const initialTab = location.hash.slice(1);
 if (document.getElementById('tab-' + initialTab)) activateTab(initialTab);
 
 render();
+fetchVesselName();
 fetchAll();
 setInterval(fetchAll, POLL_MS);
 connectWS();

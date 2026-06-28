@@ -88,6 +88,21 @@ The dashboard has four tabs:
 
 Data updates in real time via WebSocket with a 3-second REST polling fallback. No installation or build step required — it is a single HTML file bundled with the plugin.
 
+Tabs can be deep-linked via URL hash: `#power`, `#tanks`, `#breakers`, `#lights`.
+
+### Browser compatibility
+
+The dashboard is compatible with **Chrome 70+**, including the embedded Chromium browser on B&G Zeus 3 and similar Navico MFDs. No polyfills are required — the code avoids all JS and CSS features introduced after Chrome 70.
+
+### Authentication on MFDs
+
+MFDs have no Signal K session cookie, so if Signal K has authentication enabled and **Allow Read-Only Access** is disabled, the dashboard will display an error rather than silently showing empty panels.
+
+Two ways to fix this:
+
+- **Simplest:** in Signal K admin go to **Security** and enable **Allow Read-Only Access**. This allows unauthenticated reads on a private boat LAN.
+- **Token-based:** configure a JWT token in the [signalk-navico-embedder](https://github.com/lukeescude/signalk-navico-embedder) plugin. The embedder injects the token into every proxied request and into the page as `window.SK_TOKEN`, which the dashboard picks up automatically.
+
 ## Hardware reference
 
 See [DEVICES.md](./DEVICES.md) for a full map of breakers, lights, pumps, tanks, and Powerail outputs specific to the SailSense system.

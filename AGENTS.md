@@ -41,6 +41,30 @@ Data flow: WebSocket at `/signalk/v1/stream` (primary, live) with REST polling o
 - **Webapp path reads:** always read breaker state from `sailsense.breakers.{Name}.state` — the deeper `sailsense.breakers.{Name}.{Name}.state` path exists as a retained MQTT value but does not reflect live state.
 - **`topicToPath` sanitisation** must be mirrored exactly in the webapp's `toKey()` function: `%` → `pct`, all non-`[a-zA-Z0-9_-]` characters → `_`.
 
+## Browser compatibility
+
+The dashboard must run on **Chrome 70** (the embedded Chromium on B&G Zeus 3 and similar MFDs). Do not use JS or CSS features introduced after Chrome 70.
+
+**CSS — do not use:**
+- `gap` on `display: flex` containers (Chrome 84+). Use `margin-right`/`margin-left` on child elements instead. `gap` on `display: grid` is fine (Chrome 66+).
+
+**JS — do not use:**
+- Nullish coalescing `??` (Chrome 80+) — use `x != null ? x : fallback`
+- Optional chaining `?.` (Chrome 80+)
+- `Object.fromEntries` (Chrome 73+)
+- `String.prototype.replaceAll` (Chrome 85+)
+- `Array.prototype.at` / `String.prototype.at` (Chrome 92+)
+
+**Safe to use (Chrome 57+):** `const`/`let`, arrow functions, template literals, destructuring, `async`/`await`, `fetch`, `WebSocket`, `for...of`, `Object.entries`, `Object.keys`, CSS custom properties, CSS Grid.
+
+## Authentication
+
+The dashboard reads `window.SK_TOKEN` at startup. This variable is injected by `signalk-navico-embedder` when a token is configured there — it allows the MFD (which has no Signal K session cookie) to authenticate API and WebSocket requests.
+
+- If `window.SK_TOKEN` is set, it is sent as `Authorization: Bearer <token>` on REST fetches and appended as `?token=<token>` to the WebSocket URL.
+- If it is absent (direct browser access), the existing session cookie handles authentication automatically.
+- If a REST fetch returns 401, `showAuthError()` renders an actionable message across all tabs instead of silently showing empty panels.
+
 ## Signal K path convention
 
 `sailsense.<topic-with-children-stripped-and-slashes-as-dots>`
