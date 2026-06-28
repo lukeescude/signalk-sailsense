@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.3] - 2026-06-28
+
+### Fixed
+- Powernet voltmeter and input filters now match the actual MQTT topic structure (blob at `voltmeters/{N}` and `inputs/{N}`) — previously the filter expected a `/value` sub-topic that does not exist, so no voltmeter or input data was reaching Signal K
+- Powernet output settings filter now captures the `outputs/{N}/settings` blob rather than `settings/state`, `settings/current`, and `settings/temp` sub-topics that do not exist — output state, amperage, and temperature were previously silently dropped
+
+### Added
+- `powernet/device/powerail/{N}/hull` — bus bar positive/negative voltage and current per rail
+- `powernet/device/powerail/{N}/info` — per-rail system voltages (`VSensor`, `VSys`) and board temperature (`tempReg`)
+
 ## [1.0.2] - 2026-06-28
 
 ### Added

@@ -21,12 +21,17 @@ function isLiveData(topic) {
            topic === 'Hub/telematic/signalprocessed/rx';
   }
 
-  // Powernet: only voltmeter/input readings and output on-off states
+  // Powernet: voltmeter and input blobs, output settings blobs, and per-rail info/hull
   if (topic.startsWith('powernet/')) {
-    return /\/voltmeters\/\d+\/value$/.test(topic) ||
-           /\/inputs\/\d+\/value$/.test(topic) ||
-           /\/outputs\/\d+\/settings\/state$/.test(topic);
+    return /\/voltmeters\/\d+$/.test(topic) ||
+           /\/inputs\/\d+$/.test(topic) ||
+           /\/outputs\/\d+\/settings$/.test(topic) ||
+           /\/powerail\/\d+\/hull$/.test(topic) ||
+           /\/powerail\/\d+\/info$/.test(topic);
   }
+
+  // Drop internal hardware register mappings — not useful to any SK consumer
+  if (topic.includes('/field_id_mapping/')) return false;
 
   // All other groups: only forward recognised live-data leaf fields
   return [
