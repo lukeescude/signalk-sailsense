@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.8
+
+### Fixed
+- `CHANGELOG.md` added to the `files` array in `package.json` so it is included in the published npm package
+
 ## 1.0.7
 
 ### Fixed
