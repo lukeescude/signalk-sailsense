@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.7
+
+### Fixed
+- Changelog version headers reformatted from `## [x.x.x] - date` to `## x.x.x` to comply with Signal K AppStore parsing requirements
+
 ## 1.0.6
 
 ### Added
