@@ -11,6 +11,32 @@ const TOPIC_MAP = {
   ui_config: 'ui_config/#',
 };
 
+// Returns true if this MQTT topic carries live sensor data worth publishing.
+// Filters out metadata, config blobs, labels, translations, and other static noise.
+function isLiveData(topic) {
+  // Hub: only three topics carry useful live data
+  if (topic.startsWith('Hub/')) {
+    return topic === 'Hub/wifi' ||
+           topic === 'Hub/zigbee/bridge/state' ||
+           topic === 'Hub/telematic/signalprocessed/rx';
+  }
+
+  // Powernet: only voltmeter/input readings and output on-off states
+  if (topic.startsWith('powernet/')) {
+    return /\/voltmeters\/\d+\/value$/.test(topic) ||
+           /\/inputs\/\d+\/value$/.test(topic) ||
+           /\/outputs\/\d+\/settings\/state$/.test(topic);
+  }
+
+  // All other groups: only forward recognised live-data leaf fields
+  return [
+    '/state', '/actionInProgress', '/dimmer_step',
+    '/voltage', '/current', '/percentage', '/remaining',
+    '/alert',
+    '/levels/%', '/levels/L', '/levels/gal', '/levels/US gal',
+  ].some(suffix => topic.endsWith(suffix));
+}
+
 // Convert an MQTT topic to a Signal K path under the sailsense.* namespace.
 // Strips structural 'children' segments and sanitizes special characters.
 // e.g. "batteries/children/Main/children/Bank1/voltage" → "sailsense.batteries.Main.Bank1.voltage"
@@ -99,6 +125,8 @@ module.exports = function(app) {
       });
 
       client.on('message', (topic, payload) => {
+        if (!isLiveData(topic)) return;
+
         const value = coerce(payload.toString());
         const path = topicToPath(topic);
 
