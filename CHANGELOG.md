@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.6] - 2026-06-28
+
+### Added
+- `logo.png` (512×512) included in the published npm package via the `files` field
+- `signalk.appIcon` set in `package.json` so the logo appears in the Signal K AppStore
+
 ## [1.0.5] - 2026-06-28
 
 ### Fixed

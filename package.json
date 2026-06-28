@@ -1,6 +1,6 @@
 {
   "name": "signalk-sailsense",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Connects to a SailSense Hub via MQTT and publishes raw sensor data to Signal K",
   "main": "index.js",
   "scripts": {
@@ -24,7 +24,7 @@
   ],
   "signalk": {
     "displayName": "SailSense Hub",
-    "logo": "logo.png"
+    "appIcon": "logo.png"
   },
   "dependencies": {
     "mqtt": "^5.15.1"
