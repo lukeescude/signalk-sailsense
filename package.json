@@ -8,6 +8,7 @@
   },
   "keywords": [
     "signalk-node-server-plugin",
+    "signalk-webapp",
     "signalk-category-hardware",
     "signalk-category-utility"
   ],
@@ -20,12 +21,12 @@
   "type": "commonjs",
   "files": [
     "index.js",
-    "logo.png",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "public"
   ],
   "signalk": {
     "displayName": "SailSense Hub",
-    "appIcon": "logo.png"
+    "appIcon": "public/logo.png"
   },
   "dependencies": {
     "mqtt": "^5.15.1"

@@ -89,25 +89,27 @@ Controlled via `toggleLight(name, state)` or a raw `cmd/{clientId}/send` publish
 
 Controlled via `toggleBreaker(name, state)`.
 
-| Name | Key | Rail(s) | Output(s) | MQTT State Topic |
-|---|---|---|---|---|
-| Cockpit fridge | `cockpit fridge` | 1 | 23 | `breakers/children/Cockpit fridge/children/Cockpit fridge/state` |
-| Electronic | `electronic` | 1 | 22 | `breakers/children/Electronic/children/Electronic/state` |
-| Fans | `fans` | 1+2 | 13+11 | `breakers/children/Fans/children/Fans/state` |
-| Fresh water rinsing pump | `fresh water rinsing pump` | 2 | 23 | `breakers/children/Fresh water rinsing pump/children/Fresh water rinsing pump/state` |
-| Front Galley Freezer | `front galley freezer` | 1 | 19 | `breakers/children/Front Galley Freezer/children/Front Galley Freezer/state` |
-| Front Galley Fridge | `front galley fridge` | 2 | 21 | `breakers/children/Front Galley Fridge/children/Front Galley Fridge/state` |
-| Galley cool box | `galley cool box` | 2 | 18 | `breakers/children/Galley cool box/children/Galley cool box/state` |
-| Galley sea water pump | `galley sea water pump` | 2 | 13 | `breakers/children/Galley sea water pump/children/Galley sea water pump/state` |
-| HIFI | `hifi` | 1 | 17 | `breakers/children/HIFI/children/HIFI/state` |
-| Nav table screen Nep 2 | `nav table screen nep 2` | 1 | 2 | `breakers/children/Nav table screen Nep 2/children/Nav table screen Nep 2/state` |
-| Oven / plate inverter | `oven - plate inverter` | 2 | 17 | `breakers/children/Oven - plate inverter/children/Oven - plate inverter/state` |
-| Sea water rinsing pump | `sea water rinsing pump` | 2 | 24 | `breakers/children/Sea water rinsing pump/children/Sea water rinsing pump/state` |
-| STBD front cabin fridge | `stbd front cabin fridge` | 2 | 22 | `breakers/children/STBD front cabin fridge/children/STBD front cabin fridge/state` |
-| TAC reading lights | `tac reading lights` | 1 | 12 | `breakers/children/TAC reading lights/children/TAC reading lights/state` |
-| TV amplifier | `tv amplifier` | 1 | 21 | `breakers/children/TV amplifier/children/TV amplifier/state` |
+| Name | Key | Rail(s) | Output(s) | Live MQTT State Topic | Signal K Path |
+|---|---|---|---|---|---|
+| Cockpit fridge | `cockpit fridge` | 1 | 23 | `breakers/children/Cockpit fridge/state` | `sailsense.breakers.Cockpit_fridge.state` |
+| Electronic | `electronic` | 1 | 22 | `breakers/children/Electronic/state` | `sailsense.breakers.Electronic.state` |
+| Fans | `fans` | 1+2 | 13+11 | `breakers/children/Fans/state` | `sailsense.breakers.Fans.state` |
+| Fresh water rinsing pump | `fresh water rinsing pump` | 2 | 23 | `breakers/children/Fresh water rinsing pump/state` | `sailsense.breakers.Fresh_water_rinsing_pump.state` |
+| Front Galley Freezer | `front galley freezer` | 1 | 19 | `breakers/children/Front Galley Freezer/state` | `sailsense.breakers.Front_Galley_Freezer.state` |
+| Front Galley Fridge | `front galley fridge` | 2 | 21 | `breakers/children/Front Galley Fridge/state` | `sailsense.breakers.Front_Galley_Fridge.state` |
+| Galley cool box | `galley cool box` | 2 | 18 | `breakers/children/Galley cool box/state` | `sailsense.breakers.Galley_cool_box.state` |
+| Galley sea water pump | `galley sea water pump` | 2 | 13 | `breakers/children/Galley sea water pump/state` | `sailsense.breakers.Galley_sea_water_pump.state` |
+| HIFI | `hifi` | 1 | 17 | `breakers/children/HIFI/state` | `sailsense.breakers.HIFI.state` |
+| Nav table screen Nep 2 | `nav table screen nep 2` | 1 | 2 | `breakers/children/Nav table screen Nep 2/state` | `sailsense.breakers.Nav_table_screen_Nep_2.state` |
+| Oven / plate inverter | `oven - plate inverter` | 2 | 17 | `breakers/children/Oven - plate inverter/state` | `sailsense.breakers.Oven_-_plate_inverter.state` |
+| Sea water rinsing pump | `sea water rinsing pump` | 2 | 24 | `breakers/children/Sea water rinsing pump/state` | `sailsense.breakers.Sea_water_rinsing_pump.state` |
+| STBD front cabin fridge | `stbd front cabin fridge` | 2 | 22 | `breakers/children/STBD front cabin fridge/state` | `sailsense.breakers.STBD_front_cabin_fridge.state` |
+| TAC reading lights | `tac reading lights` | 1 | 12 | `breakers/children/TAC reading lights/state` | `sailsense.breakers.TAC_reading_lights.state` |
+| TV amplifier | `tv amplifier` | 1 | 21 | `breakers/children/TV amplifier/state` | `sailsense.breakers.TV_amplifier.state` |
 
 > **Fans** controls two outputs simultaneously (rail 1 out 13 + rail 2 out 11). The system handles this automatically via the `children` array in the command payload.
+
+> **Breaker path note:** The hub publishes live state at `breakers/children/{Name}/state`. A deeper path `breakers/children/{Name}/children/{Name}/state` also exists as a retained MQTT message but does not reflect the current state — always read from the top-level `state` topic.
 
 ---
 

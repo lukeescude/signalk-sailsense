@@ -52,8 +52,10 @@ Some examples:
 | `batteries/children/Main/children/Bank1/voltage` | `sailsense.batteries.Main.Bank1.voltage` |
 | `tanks/children/water_tanks/children/water_tank_portside/levels/pct` | `sailsense.tanks.water_tanks.water_tank_portside.levels.pct` |
 | `Hub/telematic/signalprocessed/rx` | `sailsense.Hub.telematic.signalprocessed.rx` |
-| `breakers/children/HIFI/children/HIFI/state` | `sailsense.breakers.HIFI.HIFI.state` |
+| `breakers/children/HIFI/state` | `sailsense.breakers.HIFI.state` |
 | `powernet/device/powerail/1/voltmeters/1/value` | `sailsense.powernet.device.powerail.1.voltmeters.1.value` |
+
+> **Note on breaker paths:** the hub also publishes a deeper path `breakers/children/HIFI/children/HIFI/state`, but that is a retained MQTT message that does not update with live state. Always read from `sailsense.breakers.{Name}.state`.
 
 String payloads are coerced to native types: `"True"`/`"False"` become booleans, numeric strings become numbers, and JSON blobs are parsed into objects.
 
@@ -66,6 +68,25 @@ String payloads are coerced to native types: `"True"`/`"False"` become booleans,
 - `Hub/#` — GPS, wind, depth, IMU, Wi-Fi, Zigbee, and telematic data
 - `powernet/#` — power rail voltmeters, analog inputs, and output states
 - `ui_config/#` — Hub UI configuration blobs
+
+## Dashboard
+
+This package includes a built-in web dashboard, served by Signal K at:
+
+```
+http://<signalk-host>/signalk-sailsense/
+```
+
+The dashboard has four tabs:
+
+| Tab | Shows |
+|---|---|
+| **Power** | Battery bank voltage, current, and state of charge (dynamically discovered) |
+| **Tanks** | PORT/STBD fill gauges for fresh water, fuel, and blackwater with litre readouts |
+| **Breakers** | All 15 circuit breakers with live on/off indicators |
+| **Lights & Pumps** | Nacelle, exterior, and cabin light states; bilge and water pump states |
+
+Data updates in real time via WebSocket with a 3-second REST polling fallback. No installation or build step required — it is a single HTML file bundled with the plugin.
 
 ## Hardware reference
 
