@@ -1,15 +1,26 @@
 {
-  "name": "sailsense-parser",
+  "name": "signalk-sailsense",
   "version": "1.0.0",
-  "description": "",
+  "description": "Connects to a SailSense Hub via MQTT and publishes raw sensor data to Signal K",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "signalk-node-server-plugin",
+    "signalk-category-hardware",
+    "signalk-category-utility"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lukeescude/signalk-sailsense.git"
+  },
+  "author": "Luke Escude",
+  "license": "MIT",
   "type": "commonjs",
+  "signalk": {
+    "displayName": "SailSense Hub"
+  },
   "dependencies": {
     "mqtt": "^5.15.1"
   }
