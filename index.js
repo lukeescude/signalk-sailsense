@@ -39,6 +39,7 @@ function isLiveData(topic) {
     '/voltage', '/current', '/percentage', '/remaining',
     '/alert',
     '/levels/%', '/levels/L', '/levels/gal', '/levels/US gal',
+    '/contents/action_shortcut',
   ].some(suffix => topic.endsWith(suffix));
 }
 

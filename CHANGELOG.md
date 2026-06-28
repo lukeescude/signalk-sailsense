@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.4] - 2026-06-28
+
+### Added
+- `contents/action_shortcut` topics now pass the live-data filter — these carry the available actions (e.g. shortcut commands) for lights and other devices under `actions/#`
+
 ## [1.0.3] - 2026-06-28
 
 ### Fixed
