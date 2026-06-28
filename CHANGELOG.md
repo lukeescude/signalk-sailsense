@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.0
+
+### Added
+- Built-in web dashboard served at `/signalk-sailsense/` — no installation or build step required
+- Four tabs: **Power** (battery voltage, current, SOC), **Tanks** (fresh water, fuel, blackwater fill gauges), **Breakers** (15 circuit breakers with live on/off indicators), **Lights & Pumps** (nacelle, exterior, cabin lights; bilge and water pumps)
+- Real-time data via WebSocket with 3-second REST polling fallback
+- Battery banks discovered dynamically — no hardcoded bank names required
+- Vessel name fetched from Signal K and displayed as the dashboard title; falls back to "SailSense Hub" if not set
+- Tab deep-linking via URL hash (`#power`, `#tanks`, `#breakers`, `#lights`)
+- Auth support: reads `window.SK_TOKEN` (injected by `signalk-navico-embedder`) so the dashboard works on MFDs that have no Signal K session cookie
+- Actionable 401 error message shown across all tabs instead of silently displaying empty panels
+- Compatible with Chrome 70+ (including B&G Zeus 3 and similar Navico MFDs)
+
+### Fixed
+- Breaker live state now read from `sailsense.breakers.{Name}.state` — the hub also publishes a stale retained path one level deeper that was causing all breakers to show as off
+
 ## 1.0.8
 
 ### Fixed
