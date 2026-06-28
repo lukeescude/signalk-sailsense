@@ -23,6 +23,20 @@ Then restart your Signal K server and enable the plugin under **Server → Plugi
 | MQTT Broker Host | `192.168.50.231` | IP address or hostname of the SailSense Hub on your local network |
 | MQTT Broker Port | `1883` | MQTT port (standard; change only if you've customised the Hub) |
 
+### Topic groups
+
+Each topic group can be toggled independently in the plugin config UI to reduce noise:
+
+| Group | Default | Covers |
+|---|---|---|
+| Batteries | enabled | Voltage, current, charge level, alerts |
+| Tanks | enabled | Fuel, fresh water, blackwater levels and alerts |
+| Actions | enabled | Lights, pumps, and switch states |
+| Breakers | enabled | Circuit breaker on/off states |
+| Hub | enabled | GPS, wind, depth, IMU, Wi-Fi, Zigbee |
+| Powernet | enabled | Power rail voltmeters, analog inputs, output states |
+| UI Config | **disabled** | Hub interface configuration blobs (high-volume, low-value) |
+
 ## Signal K paths
 
 MQTT topics are mapped to Signal K paths by:

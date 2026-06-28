@@ -1,6 +1,15 @@
 const mqtt = require('mqtt');
 
-const TOPICS = ['batteries/#', 'tanks/#', 'ui_config/#', 'actions/#', 'breakers/#', 'Hub/#', 'powernet/#'];
+// Maps settings keys to MQTT wildcard topics
+const TOPIC_MAP = {
+  batteries: 'batteries/#',
+  tanks:     'tanks/#',
+  actions:   'actions/#',
+  breakers:  'breakers/#',
+  hub:       'Hub/#',
+  powernet:  'powernet/#',
+  ui_config: 'ui_config/#',
+};
 
 // Convert an MQTT topic to a Signal K path under the sailsense.* namespace.
 // Strips structural 'children' segments and sanitizes special characters.
@@ -43,12 +52,37 @@ module.exports = function(app) {
           type: 'number',
           title: 'MQTT Broker Port',
           default: 1883
+        },
+        topics: {
+          type: 'object',
+          title: 'Subscribed Topics',
+          description: 'Choose which topic groups to subscribe to',
+          properties: {
+            batteries: { type: 'boolean', title: 'Batteries — voltage, current, charge level, alerts',     default: true  },
+            tanks:     { type: 'boolean', title: 'Tanks — fuel, fresh water, blackwater levels and alerts', default: true  },
+            actions:   { type: 'boolean', title: 'Actions — lights, pumps, and switch states',             default: true  },
+            breakers:  { type: 'boolean', title: 'Breakers — circuit breaker on/off states',               default: true  },
+            hub:       { type: 'boolean', title: 'Hub — GPS, wind, depth, IMU, Wi-Fi, Zigbee',            default: true  },
+            powernet:  { type: 'boolean', title: 'Powernet — power rail voltmeters, inputs, outputs',     default: true  },
+            ui_config: { type: 'boolean', title: 'UI Config — Hub interface configuration blobs',          default: false },
+          }
         }
       }
     },
 
     start(settings) {
-      const { mqttHost = '192.168.50.231', mqttPort = 1883 } = settings;
+      const { mqttHost = '192.168.50.231', mqttPort = 1883, topics = {} } = settings;
+
+      // Build the active topic list; default to enabled for all except ui_config
+      const activeTopics = Object.entries(TOPIC_MAP)
+        .filter(([key]) => topics[key] !== false && !(key === 'ui_config' && topics[key] == null))
+        .map(([, topic]) => topic);
+
+      if (activeTopics.length === 0) {
+        app.setPluginStatus('No topics selected — nothing to subscribe to');
+        return;
+      }
+
       const clientId = 'signalk-sailsense-' + Math.random().toString(16).slice(2, 10);
 
       client = mqtt.connect(`mqtt://${mqttHost}:${mqttPort}`, {
@@ -59,7 +93,7 @@ module.exports = function(app) {
 
       client.on('connect', () => {
         app.setPluginStatus(`Connected to ${mqttHost}:${mqttPort}`);
-        client.subscribe(TOPICS, (err) => {
+        client.subscribe(activeTopics, (err) => {
           if (err) app.setPluginError(`Subscribe error: ${err.message}`);
         });
       });

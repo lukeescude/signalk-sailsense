@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1] - 2026-06-28
+
+### Added
+- Per-topic-group subscription toggles in the plugin config UI — users can enable or disable each of the seven topic groups (batteries, tanks, actions, breakers, hub, powernet, ui_config) independently
+- `ui_config` topic group is disabled by default to reduce noise on first install
+- Plugin surfaces a clear status message if all topic groups are disabled
+
 ## [1.0.0] - 2026-06-28
 
 ### Added
