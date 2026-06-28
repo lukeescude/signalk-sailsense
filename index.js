@@ -8,6 +8,7 @@ const TOPIC_MAP = {
   breakers:  'breakers/#',
   hub:       'Hub/#',
   powernet:  'powernet/#',
+  shortcuts: 'contents/action_shortcut/#',
   ui_config: 'ui_config/#',
 };
 
@@ -39,7 +40,6 @@ function isLiveData(topic) {
     '/voltage', '/current', '/percentage', '/remaining',
     '/alert',
     '/levels/%', '/levels/L', '/levels/gal', '/levels/US gal',
-    '/contents/action_shortcut',
   ].some(suffix => topic.endsWith(suffix));
 }
 
@@ -96,6 +96,7 @@ module.exports = function(app) {
             breakers:  { type: 'boolean', title: 'Breakers — circuit breaker on/off states',               default: true  },
             hub:       { type: 'boolean', title: 'Hub — GPS, wind, depth, IMU, Wi-Fi, Zigbee',            default: true  },
             powernet:  { type: 'boolean', title: 'Powernet — power rail voltmeters, inputs, outputs',     default: true  },
+            shortcuts: { type: 'boolean', title: 'Shortcuts — anchor, engine, navigation, and deck lights', default: true  },
             ui_config: { type: 'boolean', title: 'UI Config — Hub interface configuration blobs',          default: false },
           }
         }

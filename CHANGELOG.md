@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.5] - 2026-06-28
+
+### Fixed
+- Shortcut devices (anchor, engine, navigation, and deck lights) now correctly subscribed — they live under the `contents/action_shortcut/#` topic tree, not `actions/#`. The previous 1.0.4 filter suffix was incorrect; no shortcut data was reaching Signal K.
+
 ## [1.0.4] - 2026-06-28
 
 ### Added
