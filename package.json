@@ -1,10 +1,10 @@
 {
   "name": "signalk-sailsense",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Connects to a SailSense Hub via MQTT and publishes raw sensor data to Signal K",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test test/index.test.js"
   },
   "keywords": [
     "signalk-node-server-plugin",
@@ -22,11 +22,20 @@
   "files": [
     "index.js",
     "CHANGELOG.md",
-    "public"
+    "public",
+    "screenshots",
+    "icon.png"
   ],
   "signalk": {
     "displayName": "SailSense Hub",
-    "appIcon": "./icon.png"
+    "appIcon": "icon.png",
+    "screenshots": [
+      "./screenshots/screenshot_breakers.png",
+      "./screenshots/screenshot_lights_pumps.png",
+      "./screenshots/screenshot_tanks.png",
+      "./screenshots/mobile_1.png",
+      "./screenshots/mobile_2.png"
+    ]
   },
   "dependencies": {
     "mqtt": "^5.15.1"

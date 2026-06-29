@@ -62,6 +62,7 @@ function coerce(str) {
   try { return JSON.parse(str); } catch { return str; }
 }
 
+// Exported for testing
 module.exports = function(app) {
   let client = null;
 
@@ -159,3 +160,7 @@ module.exports = function(app) {
 
   return plugin;
 };
+
+module.exports.isLiveData  = isLiveData;
+module.exports.topicToPath = topicToPath;
+module.exports.coerce      = coerce;

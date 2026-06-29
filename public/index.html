@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SailSense Hub</title>
-<link rel="icon" href="icon.png">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48" type="image/x-icon">
+<link rel="icon" href="icon.png" sizes="512x512" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -67,6 +69,7 @@ nav button:hover:not(.active) { color: var(--text); }
 .battery-name { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; color: var(--text); }
 .battery-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.15rem; }
+.stat-row { display: flex; justify-content: space-between; align-items: baseline; }
 .stat-value { font-size: 1.35rem; font-weight: 700; }
 .stat-unit { font-size: 0.78rem; color: var(--muted); margin-left: 0.15rem; }
 .soc-bar { margin-top: 1rem; }
@@ -144,13 +147,15 @@ nav button:hover:not(.active) { color: var(--text); }
 </header>
 
 <nav>
-  <button class="active" data-tab="power">Power</button>
+  <button class="active" data-tab="home">Home</button>
+  <button data-tab="power">Power</button>
   <button data-tab="tanks">Tanks</button>
   <button data-tab="breakers">Breakers</button>
   <button data-tab="lights">Lights &amp; Pumps</button>
 </nav>
 
-<div id="tab-power"    class="panel active"></div>
+<div id="tab-home"     class="panel active"></div>
+<div id="tab-power"    class="panel"></div>
 <div id="tab-tanks"    class="panel"></div>
 <div id="tab-breakers" class="panel"></div>
 <div id="tab-lights"   class="panel"></div>
@@ -176,7 +181,7 @@ const LIGHT_GROUPS = [
   { title: 'Nacelle Lights',      group: 'nacelle_lights',  names: ['Saloon light', 'Saloon indirect light', 'Cockpit light'] },
   { title: 'Exterior Lights',     group: 'exterior_light',  names: ['Submarine light', 'Foredeck courtesy light', 'Under bridge deck light', 'Cockpit courtesy light', 'Spreader light'] },
   { title: 'Port Cabin Lights',   group: 'port_lights',     names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Port ' },
-  { title: 'Starboard Cabin Lights', group: 'stbd_lights',  names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'STBD ' },
+  { title: 'Stbd Cabin Lights', group: 'stbd_lights',  names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Stbd ' },
 ];
 
 const PUMP_GROUPS = [
@@ -194,6 +199,14 @@ const state = {};
 // Mirrors the sanitisation in index.js topicToPath()
 function toKey(name) {
   return name.replace(/%/g, 'pct').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function toLabel(name) {
+  return name.replace(/STBD/g, 'Stbd');
+}
+
+function toTitleCase(s) {
+  return s.replace(/\b\w/g, function(c) { return c.toUpperCase(); });
 }
 
 function get(path) { return state[path]; }
@@ -254,11 +267,19 @@ async function fetchVesselName() {
 async function fetchAll() {
   try {
     const headers = SK_TOKEN ? { 'Authorization': 'Bearer ' + SK_TOKEN } : {};
-    const r = await fetch('/signalk/v1/api/vessels/self/sailsense', { credentials: 'include', headers: headers });
-    if (r.status === 401) { showAuthError(); return; }
-    if (!r.ok) return;
-    const data = await r.json();
-    flatten(data, 'sailsense');
+    const [r1, r2, r3, r4, r5] = await Promise.all([
+      fetch('/signalk/v1/api/vessels/self/sailsense', { credentials: 'include', headers: headers }),
+      fetch('/signalk/v1/api/vessels/self/electrical/batteries', { credentials: 'include', headers: headers }),
+      fetch('/signalk/v1/api/vessels/self/electrical/solar', { credentials: 'include', headers: headers }),
+      fetch('/signalk/v1/api/vessels/self/electrical/inverters', { credentials: 'include', headers: headers }),
+      fetch('/signalk/v1/api/vessels/self/electrical/venus', { credentials: 'include', headers: headers }),
+    ]);
+    if (r1.status === 401) { showAuthError(); return; }
+    if (r1.ok) { const d = await r1.json(); flatten(d, 'sailsense'); }
+    if (r2.ok) { const d = await r2.json(); flatten(d, 'electrical.batteries'); }
+    if (r3.ok) { const d = await r3.json(); flatten(d, 'electrical.solar'); }
+    if (r4.ok) { const d = await r4.json(); flatten(d, 'electrical.inverters'); }
+    if (r5.ok) { const d = await r5.json(); flatten(d, 'electrical.venus'); }
     render();
   } catch (_) { /* keep polling */ }
 }
@@ -267,6 +288,7 @@ function showAuthError() {
   var msg = '<p class="placeholder">Signal K authentication required — no data available.<br>'
     + 'In Signal K admin go to <strong>Security</strong> and either enable '
     + '<em>Allow Read-Only Access</em>, or add a token to the Navico MFD Embedder config.</p>';
+  document.getElementById('tab-home').innerHTML     = msg;
   document.getElementById('tab-power').innerHTML    = msg;
   document.getElementById('tab-tanks').innerHTML    = msg;
   document.getElementById('tab-breakers').innerHTML = msg;
@@ -284,7 +306,13 @@ function connectWS() {
     setConnected(true);
     ws.send(JSON.stringify({
       context: 'vessels.self',
-      subscribe: [{ path: 'sailsense.*', period: 1000, policy: 'instant' }],
+      subscribe: [
+        { path: 'sailsense.*', period: 1000, policy: 'instant' },
+        { path: 'electrical.batteries.*', period: 1000, policy: 'instant' },
+        { path: 'electrical.solar.*', period: 1000, policy: 'instant' },
+        { path: 'electrical.inverters.*', period: 1000, policy: 'instant' },
+        { path: 'electrical.venus.*', period: 1000, policy: 'instant' },
+      ],
     }));
   };
 
@@ -311,10 +339,160 @@ function setConnected(ok) {
 // ─── Render ───────────────────────────────────────────────────────────────────
 
 function render() {
+  renderHome();
   renderPower();
   renderTanks();
   renderBreakers();
   renderLights();
+}
+
+// ─── Home tab ─────────────────────────────────────────────────────────────────
+
+function renderSolarCard() {
+  var totalPower = null;
+  var totalCurrent = null;
+  for (var path in state) {
+    var m = path.match(/^electrical\.solar\.([^.]+)\.(panelPower|current)$/);
+    if (!m) continue;
+    var val = Number(state[path]);
+    if (isNaN(val)) continue;
+    if (m[2] === 'panelPower') totalPower = (totalPower != null ? totalPower : 0) + val;
+    else totalCurrent = (totalCurrent != null ? totalCurrent : 0) + val;
+  }
+  var barPct = totalPower != null ? Math.min(totalPower / 2500 * 100, 100) : 0;
+  return '<div class="battery-group">'
+    + '<div class="battery-name">Solar Yield</div>'
+    + '<div class="battery-stats">'
+    +   '<div class="stat-row" style="grid-column:span 2">'
+    +     '<div class="stat-label">Power</div>'
+    +     '<div class="stat-value">' + fmt(totalPower, 0) + '<span class="stat-unit">W</span></div>'
+    +   '</div>'
+    +   '<div class="stat-row" style="grid-column:span 2">'
+    +     '<div class="stat-label">Current</div>'
+    +     '<div class="stat-value">' + fmt(totalCurrent, 1) + '<span class="stat-unit">A</span></div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="soc-bar">'
+    +   '<div class="soc-track">'
+    +     '<div class="soc-fill" style="width:' + barPct + '%; background:var(--amber)"></div>'
+    +   '</div>'
+    +   '<div class="soc-labels"><span>0W</span><span>2500W</span></div>'
+    + '</div>'
+    + '</div>';
+}
+
+function renderLoadsCard() {
+  var acPower = null;
+  var acCurrent = null;
+  var p, mv, val;
+  for (p in state) {
+    mv = p.match(/^electrical\.inverters\.([^.]+)\.acout\.(power|current)$/);
+    if (!mv) continue;
+    val = Number(state[p]);
+    if (isNaN(val)) continue;
+    if (mv[2] === 'power') acPower = (acPower != null ? acPower : 0) + val;
+    else acCurrent = (acCurrent != null ? acCurrent : 0) + val;
+  }
+
+  var dcPower = state['electrical.venus.dcPower'] != null ? Number(state['electrical.venus.dcPower']) : null;
+  if (dcPower != null && isNaN(dcPower)) dcPower = null;
+
+  var dcCurrent = null;
+  if (dcPower != null) {
+    for (p in state) {
+      mv = p.match(/^electrical\.batteries\.([^.]+)\.voltage$/);
+      if (!mv) continue;
+      val = Number(state[p]);
+      if (!isNaN(val) && val > 0) { dcCurrent = dcPower / val; break; }
+    }
+  }
+
+  return '<div class="battery-group">'
+    + '<div class="battery-name">Loads</div>'
+    + '<div class="battery-stats">'
+    +   '<div>'
+    +     '<div class="stat-label">AC Power</div>'
+    +     '<div class="stat-value">' + fmt(acPower, 0) + '<span class="stat-unit">W</span></div>'
+    +   '</div>'
+    +   '<div>'
+    +     '<div class="stat-label">AC Current</div>'
+    +     '<div class="stat-value">' + fmt(acCurrent, 1) + '<span class="stat-unit">A</span></div>'
+    +   '</div>'
+    +   '<div>'
+    +     '<div class="stat-label">DC Power</div>'
+    +     '<div class="stat-value">' + fmt(dcPower, 0) + '<span class="stat-unit">W</span></div>'
+    +   '</div>'
+    +   '<div>'
+    +     '<div class="stat-label">DC Current</div>'
+    +     '<div class="stat-value">' + fmt(dcCurrent, 1) + '<span class="stat-unit">A</span></div>'
+    +   '</div>'
+    + '</div>'
+    + '</div>';
+}
+
+function renderTankCardFromValues(label, pct, litres, type) {
+  var display = pct != null ? Math.round(Number(pct)) : null;
+  var currentGal = litres != null ? Number(litres) * 0.264172 : null;
+  var totalGal = (litres != null && pct != null && Number(pct) > 0)
+    ? Number(litres) * 100 / Number(pct) * 0.264172 : null;
+  var volLabel = currentGal != null && totalGal != null
+    ? fmt(currentGal, 1) + ' / ' + fmt(totalGal, 0) + ' gal'
+    : currentGal != null ? fmt(currentGal, 1) + ' gal' : 'No data';
+  return '<div class="tank-card">'
+    + '<div class="tank-header">'
+    +   '<span class="tank-name">' + label + '</span>'
+    +   '<span class="tank-pct">' + (display != null ? display + '%' : '–') + '</span>'
+    + '</div>'
+    + '<div class="tank-track">'
+    +   '<div class="tank-fill ' + type + '" style="width:' + Math.min(display != null ? display : 0, 100) + '%"></div>'
+    + '</div>'
+    + '<div class="tank-litres">' + volLabel + '</div>'
+    + '</div>';
+}
+
+function renderHome() {
+  var base = 'sailsense.tanks';
+  var portPct  = state[base + '.water_tanks.water_tank_portside.levels.pct'];
+  var stbdPct  = state[base + '.water_tanks.water_tank_starboard.levels.pct'];
+  var portL    = state[base + '.water_tanks.water_tank_portside.levels.L'];
+  var stbdL    = state[base + '.water_tanks.water_tank_starboard.levels.L'];
+
+  var avgPct = null;
+  if (portPct != null && stbdPct != null) {
+    avgPct = (Number(portPct) + Number(stbdPct)) / 2;
+  } else if (portPct != null) {
+    avgPct = Number(portPct);
+  } else if (stbdPct != null) {
+    avgPct = Number(stbdPct);
+  }
+
+  var totalL = null;
+  if (portL != null && stbdL != null) {
+    totalL = Number(portL) + Number(stbdL);
+  } else if (portL != null) {
+    totalL = Number(portL);
+  } else if (stbdL != null) {
+    totalL = Number(stbdL);
+  }
+
+  var houseBanks = getHouseBanks();
+
+  document.getElementById('tab-home').innerHTML =
+    '<div class="tank-group">'
+    + '<div class="tank-section-title">Electrical</div>'
+    + '<div class="grid">'
+    + Object.keys(houseBanks).map(function(id, i) { return renderHouseBatteryCard(id, houseBanks[id], i); }).join('')
+    + renderSolarCard()
+    + renderLoadsCard()
+    + '</div></div>'
+    + '<div class="tank-group">'
+    + '<div class="tank-section-title">Tanks</div>'
+    + '<div class="grid">'
+    +   renderTankCardFromValues('Fresh Water', avgPct, totalL, 'water')
+    +   renderTankCard('Port Blackwater', base + '.blackwater_tanks.blackwater_tank_portside.levels', 'black')
+    +   renderTankCard('Stbd Blackwater', base + '.blackwater_tanks.blackwater_tank_starboard.levels', 'black')
+    + '</div>'
+    + '</div>';
 }
 
 // ─── Power tab ────────────────────────────────────────────────────────────────
@@ -325,10 +503,54 @@ function socColor(pct) {
   return 'var(--red)';
 }
 
+function getHouseBanks() {
+  const banks = {};
+  for (const [path, val] of Object.entries(state)) {
+    const m = path.match(/^electrical\.batteries\.([^.]+)\.(.+)$/);
+    if (!m) continue;
+    if (!banks[m[1]]) banks[m[1]] = {};
+    banks[m[1]][m[2]] = val;
+  }
+  return banks;
+}
+
+function renderHouseBatteryCard(id, data, index) {
+  const soc = data['capacity.stateOfCharge'] != null
+    ? Math.round(Number(data['capacity.stateOfCharge']) * 100) : null;
+  const color = soc != null ? socColor(soc) : '#6b7280';
+  const label = 'House ' + (index + 1);
+  const current = data['current'] != null ? Number(data['current']) : null;
+  const currentColor = current == null ? '' : current < 0 ? 'var(--red)' : '#60a5fa';
+  return `<div class="battery-group">
+    <div class="battery-name">${label}</div>
+    <div class="battery-stats">
+      <div>
+        <div class="stat-label">Voltage</div>
+        <div class="stat-value">${fmt(data['voltage'])}<span class="stat-unit">V</span></div>
+      </div>
+      <div>
+        <div class="stat-label">Current</div>
+        <div class="stat-value"${currentColor ? ' style="color:' + currentColor + '"' : ''}>${fmt(current)}<span class="stat-unit">A</span></div>
+      </div>
+      ${soc != null ? `<div class="stat-row" style="grid-column:span 2">
+        <div class="stat-label">State of Charge</div>
+        <div class="stat-value" style="color:${color}">${soc}<span class="stat-unit">%</span></div>
+      </div>` : '<div></div><div></div>'}
+    </div>
+    ${soc != null ? `<div class="soc-bar">
+      <div class="soc-track">
+        <div class="soc-fill" style="width:${soc}%; background:${color}"></div>
+      </div>
+      <div class="soc-labels"><span>0%</span><span>50%</span><span>100%</span></div>
+    </div>` : ''}
+  </div>`;
+}
+
 function renderPower() {
   const el = document.getElementById('tab-power');
+  const houseBanks = getHouseBanks();
 
-  // Discover battery banks dynamically from state keys
+  // Discover engine battery banks dynamically from state keys
   const banks = {};
   for (const [path, val] of Object.entries(state)) {
     const m = path.match(/^sailsense\.batteries\.(.+)\.([^.]+)$/);
@@ -339,51 +561,78 @@ function renderPower() {
     banks[bank][field] = val;
   }
 
-  if (Object.keys(banks).length === 0) {
+  if (Object.keys(houseBanks).length === 0 && Object.keys(banks).length === 0) {
     el.innerHTML = '<p class="placeholder">No battery data yet — check plugin connection</p>';
     return;
   }
 
-  el.innerHTML = '<div class="grid">' + Object.entries(banks).map(([bank, data]) => {
-    const pct = data.percentage != null ? Math.round(Number(data.percentage)) : null;
-    const color = pct != null ? socColor(pct) : '#6b7280';
-    const label = bank.replace(/\./g, ' › ');
-    return `<div class="battery-group">
-      <div class="battery-name">${label}</div>
-      <div class="battery-stats">
-        <div>
-          <div class="stat-label">Voltage</div>
-          <div class="stat-value">${fmt(data.voltage)}<span class="stat-unit">V</span></div>
-        </div>
-        <div>
-          <div class="stat-label">Current</div>
-          <div class="stat-value">${fmt(data.current)}<span class="stat-unit">A</span></div>
-        </div>
-        ${data.remaining != null ? `<div>
-          <div class="stat-label">Remaining</div>
-          <div class="stat-value">${fmt(data.remaining)}<span class="stat-unit">Ah</span></div>
-        </div>` : '<div></div>'}
-        ${pct != null ? `<div>
-          <div class="stat-label">State of Charge</div>
-          <div class="stat-value" style="color:${color}">${pct}<span class="stat-unit">%</span></div>
-        </div>` : '<div></div>'}
-      </div>
-      ${pct != null ? `<div class="soc-bar">
-        <div class="soc-track">
-          <div class="soc-fill" style="width:${pct}%; background:${color}"></div>
-        </div>
-        <div class="soc-labels"><span>0%</span><span>50%</span><span>100%</span></div>
-      </div>` : ''}
-    </div>`;
-  }).join('') + '</div>';
+  let html = '';
+
+  if (Object.keys(houseBanks).length > 0) {
+    html += '<div class="tank-group">'
+      + '<div class="tank-section-title">House Batteries</div>'
+      + '<div class="grid">'
+      + Object.entries(houseBanks).map(([id, data], i) => renderHouseBatteryCard(id, data, i)).join('')
+      + '</div></div>';
+  }
+
+  if (Object.keys(banks).length > 0) {
+    html += '<div class="tank-group">'
+      + '<div class="tank-section-title">Engine Batteries</div>'
+      + '<div class="grid">'
+      + Object.entries(banks).map(([bank, data]) => {
+          const pct = data.percentage != null ? Math.round(Number(data.percentage)) : null;
+          const color = pct != null ? socColor(pct) : '#6b7280';
+          const bankLower = bank.toLowerCase();
+          const label = /port/.test(bankLower) ? 'Port'
+            : /stbd|starboard/.test(bankLower) ? 'Stbd'
+            : bank.replace(/\./g, ' › ');
+          return `<div class="battery-group">
+            <div class="battery-name">${label}</div>
+            <div class="battery-stats">
+              <div>
+                <div class="stat-label">Voltage</div>
+                <div class="stat-value">${fmt(data.voltage)}<span class="stat-unit">V</span></div>
+              </div>
+              <div>
+                <div class="stat-label">Current</div>
+                <div class="stat-value">${fmt(data.current)}<span class="stat-unit">A</span></div>
+              </div>
+              ${data.remaining != null ? `<div class="stat-row" style="grid-column:span 2">
+                <div class="stat-label">Remaining</div>
+                <div class="stat-value">${fmt(data.remaining)}<span class="stat-unit">Ah</span></div>
+              </div>` : ''}
+              ${pct != null ? `<div class="stat-row" style="grid-column:span 2">
+                <div class="stat-label">State of Charge</div>
+                <div class="stat-value" style="color:${color}">${pct}<span class="stat-unit">%</span></div>
+              </div>` : ''}
+            </div>
+            ${pct != null ? `<div class="soc-bar">
+              <div class="soc-track">
+                <div class="soc-fill" style="width:${pct}%; background:${color}"></div>
+              </div>
+              <div class="soc-labels"><span>0%</span><span>50%</span><span>100%</span></div>
+            </div>` : ''}
+          </div>`;
+        }).join('')
+      + '</div></div>';
+  }
+
+  el.innerHTML = html;
 }
 
 // ─── Tanks tab ────────────────────────────────────────────────────────────────
 
 function renderTankCard(label, levelPrefix, type) {
-  const pct   = state[levelPrefix + '.pct'];
+  const pct    = state[levelPrefix + '.pct'];
   const litres = state[levelPrefix + '.L'];
   const display = pct != null ? Math.round(Number(pct)) : null;
+  const currentGal = litres != null ? Number(litres) * 0.264172 : null;
+  const totalGal   = (litres != null && pct != null && Number(pct) > 0)
+    ? Number(litres) * 100 / Number(pct) * 0.264172 : null;
+  const volLabel = currentGal != null && totalGal != null
+    ? fmt(currentGal, 1) + ' / ' + fmt(totalGal, 0) + ' gal'
+    : currentGal != null ? fmt(currentGal, 1) + ' gal' : 'No data';
   return `<div class="tank-card">
     <div class="tank-header">
       <span class="tank-name">${label}</span>
@@ -392,7 +641,7 @@ function renderTankCard(label, levelPrefix, type) {
     <div class="tank-track">
       <div class="tank-fill ${type}" style="width:${Math.min(display != null ? display : 0, 100)}%"></div>
     </div>
-    <div class="tank-litres">${litres != null ? fmt(litres) + ' L' : 'No data'}</div>
+    <div class="tank-litres">${volLabel}</div>
   </div>`;
 }
 
@@ -402,22 +651,22 @@ function renderTanks() {
     <div class="tank-group">
       <div class="tank-section-title">Fresh Water (285 L each)</div>
       <div class="grid">
-        ${renderTankCard('PORT Fresh Water', base + '.water_tanks.water_tank_portside.levels', 'water')}
-        ${renderTankCard('STBD Fresh Water', base + '.water_tanks.water_tank_starboard.levels', 'water')}
+        ${renderTankCard('Port Fresh Water', base + '.water_tanks.water_tank_portside.levels', 'water')}
+        ${renderTankCard('Stbd Fresh Water', base + '.water_tanks.water_tank_starboard.levels', 'water')}
       </div>
     </div>
     <div class="tank-group">
       <div class="tank-section-title">Diesel / Fuel (276 L each)</div>
       <div class="grid">
-        ${renderTankCard('PORT Fuel', base + '.gazoil_tanks.gazoil_tank_portside.levels', 'fuel')}
-        ${renderTankCard('STBD Fuel', base + '.gazoil_tanks.gazoil_tank_starboard.levels', 'fuel')}
+        ${renderTankCard('Port Fuel', base + '.gazoil_tanks.gazoil_tank_portside.levels', 'fuel')}
+        ${renderTankCard('Stbd Fuel', base + '.gazoil_tanks.gazoil_tank_starboard.levels', 'fuel')}
       </div>
     </div>
     <div class="tank-group">
       <div class="tank-section-title">Blackwater (63 L each)</div>
       <div class="grid">
-        ${renderTankCard('PORT Blackwater', base + '.blackwater_tanks.blackwater_tank_portside.levels', 'black')}
-        ${renderTankCard('STBD Blackwater', base + '.blackwater_tanks.blackwater_tank_starboard.levels', 'black')}
+        ${renderTankCard('Port Blackwater', base + '.blackwater_tanks.blackwater_tank_portside.levels', 'black')}
+        ${renderTankCard('Stbd Blackwater', base + '.blackwater_tanks.blackwater_tank_starboard.levels', 'black')}
       </div>
     </div>
   `;
@@ -439,7 +688,7 @@ function renderBreakers() {
       return `<div class="breaker">
         <div class="breaker-dot ${cls}"></div>
         <div>
-          <div class="breaker-name">${name}</div>
+          <div class="breaker-name">${toTitleCase(toLabel(name))}</div>
           <div class="breaker-val">${label}</div>
         </div>
       </div>`;
@@ -454,7 +703,7 @@ function renderLightItem(label, path) {
   const on  = isOn(val);
   return `<div class="light-item">
     <div class="light-dot ${on ? 'on' : ''}"></div>
-    <span class="light-name">${label}</span>
+    <span class="light-name">${toTitleCase(label)}</span>
   </div>`;
 }
 
@@ -474,7 +723,7 @@ function renderLights() {
     html += `<div class="light-section">
       <div class="light-section-title">${title}</div>
       <div class="light-grid">
-        ${names.map(n => renderLightItem(n, `sailsense.actions.${group}.${toKey(n)}.state`)).join('')}
+        ${names.map(n => renderLightItem(toLabel(n), `sailsense.actions.${group}.${toKey(n)}.state`)).join('')}
       </div>
     </div>`;
   }

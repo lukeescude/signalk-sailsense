@@ -21,14 +21,25 @@ Key functions in `index.js`:
 
 ### Dashboard webapp (`public/index.html`)
 
-A single-file vanilla JS webapp served by Signal K at `/signalk-sailsense/`. No build step, no framework. Four tabs:
+A single-file vanilla JS webapp served by Signal K at `/signalk-sailsense/`. No build step, no framework. Five tabs:
 
-- **Power** — battery bank cards (voltage, current, SOC bar); banks are discovered dynamically by scanning `sailsense.batteries.*` keys
-- **Tanks** — PORT/STBD fill gauges for fresh water, fuel, and blackwater
+- **Home** — two sections: **Electrical** (House Battery cards, Solar Yield card, Loads card) and **Tanks** (combined fresh water + port/stbd blackwater tiles)
+- **Power** — two sections: **House Batteries** (from `electrical.batteries.*`) above **Engine Batteries** (from `sailsense.batteries.*`); banks discovered dynamically
+- **Tanks** — Port/Stbd fill gauges for fresh water, fuel, and blackwater
 - **Breakers** — all 15 breakers with green/red on/off indicators
 - **Lights & Pumps** — nacelle, exterior, and cabin light states; bilge and water pump states
 
-Data flow: WebSocket at `/signalk/v1/stream` (primary, live) with REST polling of `/signalk/v1/api/vessels/self/sailsense` every 3 s as fallback. Tab state is persisted in the URL hash.
+Data flow: WebSocket at `/signalk/v1/stream` (primary, live) with REST polling every 3 s as fallback. The REST poll fetches five endpoints in parallel: `sailsense`, `electrical/batteries`, `electrical/solar`, `electrical/inverters`, and `electrical/venus`. The WebSocket subscribes to all five corresponding path prefixes. Tab state is persisted in the URL hash.
+
+### Electrical cards (Home tab)
+
+- **House Battery** — one card per `electrical.batteries.*` bank; labeled "House 1", "House 2", etc. by index. Current is coloured: negative → `var(--red)`, positive → `#60a5fa`.
+- **Solar Yield** — aggregates `electrical.solar.*.panelPower` (W) and `electrical.solar.*.current` (A) across all controllers. Includes an amber progress bar scaled 0–2500 W.
+- **Loads** — AC Power/Current from `electrical.inverters.*.acout.power/.current` (summed); DC Power from `electrical.venus.dcPower`; DC Current derived as `dcPower / batteryVoltage` using the first available `electrical.batteries.*.voltage` in state.
+
+### Engine battery labels (Power tab)
+
+Engine batteries (from `sailsense.batteries.*`) are labeled by inspecting the bank path: if it contains `port` → "Port", `stbd`/`starboard` → "Stbd", otherwise the raw dotted path. Do **not** use positional even/odd indexing — derive from the path.
 
 ## Conventions
 
@@ -40,6 +51,11 @@ Data flow: WebSocket at `/signalk/v1/stream` (primary, live) with REST polling o
 - **`isLiveData` is intentionally conservative.** It exists to suppress high-volume metadata noise. When in doubt, keep it strict.
 - **Webapp path reads:** always read breaker state from `sailsense.breakers.{Name}.state` — the deeper `sailsense.breakers.{Name}.{Name}.state` path exists as a retained MQTT value but does not reflect live state.
 - **`topicToPath` sanitisation** must be mirrored exactly in the webapp's `toKey()` function: `%` → `pct`, all non-`[a-zA-Z0-9_-]` characters → `_`.
+- **Display labels vs. path keys are separate concerns.** In `BREAKERS` and `PUMP_GROUPS`, the strings are used both as display text and as input to `toKey()` to build Signal K paths. Changing the capitalisation or spelling of these strings changes the path and breaks data lookup. To rename something in the UI, use the `toLabel()` helper (applied at render time) rather than editing the raw string in the array. `LIGHT_GROUPS` entries are safe to rename because the `prefix` field is display-only and `toKey()` is called on the base name only.
+- **`toLabel()` is the display transform.** It currently maps `STBD` → `Stbd`. Any further label changes (e.g. renaming `Port` to something else) should go through this function, not by editing the raw names in `BREAKERS` or `PUMP_GROUPS`.
+- **`toTitleCase()` is applied at render time** to all breaker names (via `toTitleCase(toLabel(name))`) and all light/pump item labels (inside `renderLightItem`). Do not title-case the raw strings in `BREAKERS`, `LIGHT_GROUPS`, or `PUMP_GROUPS` — those must stay in their original form for path key generation and MQTT matching.
+- **Tank volumes are displayed in US gallons**, not litres. Current fill and total capacity are both derived from the live Signal K data (`levels.L` and `levels.pct`) — total = `L * 100 / pct`. No hardcoded capacities in the render logic.
+- **AppStore screenshots** are in `screenshots/` and listed in `package.json` under `signalk.screenshots`. The directory is also included in the `files` array so it ships with the npm package.
 
 ## Browser compatibility
 

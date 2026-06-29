@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0
+
+### Added
+- **Home tab** added to the dashboard with two summary sections: **Electrical** and **Tanks**
+- **Electrical section** on the Home tab shows three cards side by side:
+  - *House Battery* cards (one per bank from `electrical.batteries.*`) with voltage, current, SOC bar; current coloured red when discharging, blue when charging
+  - *Solar Yield* card aggregating panel power (W) and current (A) across all `electrical.solar.*` controllers, with an amber progress bar scaled 0–2500 W
+  - *Loads* card showing AC Power and AC Current (from `electrical.inverters.*.acout`) and DC Power and DC Current (derived from `electrical.venus.dcPower` and battery voltage)
+- **Tanks section** on the Home tab shows combined fresh water, port blackwater, and starboard blackwater tiles
+- **House Batteries** section added to the Power tab above Engine Batteries
+- **Engine Batteries** section label added to Power tab; battery names derived from Signal K path (port/stbd)
+- Tank volumes now displayed in **US gallons** with "current / total" format (e.g. `47.3gal/75gal`); total capacity derived dynamically from live data
+- All breaker and light/pump labels now **title-cased** at render time
+- Display labels (`Port`, `Stbd`) decoupled from Signal K path keys via `toLabel()` and `toTitleCase()` helpers
+- AppStore screenshots wired up in `package.json` under `signalk.screenshots`
+- `favicon.ico` (16×16, 32×32, 48×48) and `apple-touch-icon.png` (180×180) generated from `icon.png` and referenced in the dashboard
+
 ## 1.1.0
 
 ### Added
