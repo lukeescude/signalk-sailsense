@@ -103,8 +103,17 @@ nav button:hover:not(.active) { color: var(--text); }
 .breaker {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 8px; padding: 0.8rem 1rem;
-  display: flex; align-items: center;
+  display: flex; align-items: center; width: 100%;
+  cursor: pointer; transition: border-color 0.15s;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Reset native button styles */
+  -webkit-appearance: none; appearance: none;
+  font-family: inherit; font-size: inherit; color: inherit;
+  text-align: left;
 }
+.breaker:hover, .breaker:active { border-color: var(--accent); }
 .breaker-dot {
   width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
   margin-right: 0.75rem;
@@ -193,6 +202,20 @@ const PUMP_GROUPS = [
 
 // Flat map of Signal K path → value, e.g. "sailsense.batteries.Main.Bank1.voltage" → 12.6
 const state = {};
+var activeWS = null;
+var sessionToken = null;
+try { sessionToken = sessionStorage.getItem('sk-auth-token'); } catch(e) {}
+
+// Debounce render so rapid WS bursts (initial SK dump, many active paths) only
+// produce one DOM update per 250 ms — critical for slow MFD CPUs.
+var renderTimer = null;
+function scheduleRender() {
+  if (renderTimer) return;
+  renderTimer = setTimeout(function() {
+    renderTimer = null;
+    render();
+  }, 250);
+}
 
 // ─── Path helpers ─────────────────────────────────────────────────────────────
 
@@ -280,7 +303,7 @@ async function fetchAll() {
     if (r3.ok) { const d = await r3.json(); flatten(d, 'electrical.solar'); }
     if (r4.ok) { const d = await r4.json(); flatten(d, 'electrical.inverters'); }
     if (r5.ok) { const d = await r5.json(); flatten(d, 'electrical.venus'); }
-    render();
+    scheduleRender();
   } catch (_) { /* keep polling */ }
 }
 
@@ -301,17 +324,18 @@ function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const tokenParam = SK_TOKEN ? '&token=' + encodeURIComponent(SK_TOKEN) : '';
   const ws = new WebSocket(proto + '//' + location.host + '/signalk/v1/stream?subscribe=none' + tokenParam);
+  activeWS = ws;
 
   ws.onopen = () => {
     setConnected(true);
     ws.send(JSON.stringify({
       context: 'vessels.self',
       subscribe: [
-        { path: 'sailsense.*', period: 1000, policy: 'instant' },
-        { path: 'electrical.batteries.*', period: 1000, policy: 'instant' },
-        { path: 'electrical.solar.*', period: 1000, policy: 'instant' },
-        { path: 'electrical.inverters.*', period: 1000, policy: 'instant' },
-        { path: 'electrical.venus.*', period: 1000, policy: 'instant' },
+        { path: 'sailsense.*', period: 1000, policy: 'fixed' },
+        { path: 'electrical.batteries.*', period: 1000, policy: 'fixed' },
+        { path: 'electrical.solar.*', period: 1000, policy: 'fixed' },
+        { path: 'electrical.inverters.*', period: 1000, policy: 'fixed' },
+        { path: 'electrical.venus.*', period: 1000, policy: 'fixed' },
       ],
     }));
   };
@@ -325,10 +349,10 @@ function connectWS() {
         state[v.path] = v.value;
       }
     }
-    render();
+    scheduleRender();
   };
 
-  ws.onclose = () => { setConnected(false); setTimeout(connectWS, 5000); };
+  ws.onclose = () => { activeWS = null; setConnected(false); setTimeout(connectWS, 2000); };
   ws.onerror = () => ws.close();
 }
 
@@ -674,26 +698,51 @@ function renderTanks() {
 
 // ─── Breakers tab ─────────────────────────────────────────────────────────────
 
-function renderBreakers() {
-  document.getElementById('tab-breakers').innerHTML =
+function bindBreakerTile(tile) {
+  tile.addEventListener('click', function() {
+    var key = tile.dataset.key;
+    var newVal = !isOn(state['sailsense.breakers.' + key + '.state']);
+    // Optimistic update: flip the dot immediately so touch feels instant.
+    // The real state arrives via WS/REST within ~1 s and will correct if needed.
+    state['sailsense.breakers.' + key + '.state'] = newVal ? 'on' : 'off';
+    tile.querySelector('.breaker-dot').className = 'breaker-dot ' + (newVal ? 'on' : 'off');
+    tile.querySelector('.breaker-val').textContent = newVal ? 'ON' : 'OFF';
+    toggleBreaker(key, newVal);
+  });
+}
+
+function initBreakers() {
+  var container = document.getElementById('tab-breakers');
+  container.innerHTML =
     '<div class="breaker-grid">' +
-    BREAKERS.map(name => {
-      const key  = toKey(name);
-      const path = `sailsense.breakers.${key}.state`;
-      const val  = state[path];
-      const on   = isOn(val);
-      const off  = val === false || val === 'off' || val === 'False';
-      const cls  = on ? 'on' : off ? 'off' : '';
-      const label = val == null ? 'no data' : on ? 'ON' : 'OFF';
-      return `<div class="breaker">
-        <div class="breaker-dot ${cls}"></div>
-        <div>
-          <div class="breaker-name">${toTitleCase(toLabel(name))}</div>
-          <div class="breaker-val">${label}</div>
-        </div>
-      </div>`;
+    BREAKERS.map(function(name) {
+      var key = toKey(name);
+      return '<button type="button" class="breaker" data-key="' + key + '">' +
+        '<div class="breaker-dot"></div>' +
+        '<div>' +
+          '<div class="breaker-name">' + toTitleCase(toLabel(name)) + '</div>' +
+          '<div class="breaker-val">no data</div>' +
+        '</div>' +
+        '</button>';
     }).join('') +
     '</div>';
+  var tiles = container.querySelectorAll('.breaker');
+  for (var i = 0; i < tiles.length; i++) { bindBreakerTile(tiles[i]); }
+}
+
+function renderBreakers() {
+  BREAKERS.forEach(function(name) {
+    var key   = toKey(name);
+    var val   = state['sailsense.breakers.' + key + '.state'];
+    var on    = isOn(val);
+    var off   = val === false || val === 'off' || val === 'False';
+    var cls   = on ? 'on' : off ? 'off' : '';
+    var label = val == null ? 'no data' : on ? 'ON' : 'OFF';
+    var tile  = document.querySelector('.breaker[data-key="' + key + '"]');
+    if (!tile) return;
+    tile.querySelector('.breaker-dot').className = 'breaker-dot' + (cls ? ' ' + cls : '');
+    tile.querySelector('.breaker-val').textContent = label;
+  });
 }
 
 // ─── Lights & Pumps tab ───────────────────────────────────────────────────────
@@ -737,6 +786,119 @@ function renderLights() {
 const initialTab = location.hash.slice(1);
 if (document.getElementById('tab-' + initialTab)) activateTab(initialTab);
 
+// ─── SK login overlay ────────────────────────────────────────────────────────
+
+var pendingPut = null; // {key, value} saved while the login overlay is open
+
+function showLoginOverlay(key, value) {
+  pendingPut = { key: key, value: value };
+  var ov = document.getElementById('sk-login-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'sk-login-overlay';
+    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;' +
+      'background:rgba(0,0,0,0.65);z-index:10000;' +
+      'display:flex;align-items:center;justify-content:center;';
+    var inputStyle = 'display:block;width:100%;box-sizing:border-box;' +
+      'padding:0.5rem 0.75rem;margin-bottom:0.6rem;' +
+      'background:var(--surface);border:1px solid var(--border);border-radius:4px;' +
+      'color:inherit;font-size:16px;font-family:inherit;';
+    ov.innerHTML =
+      '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;' +
+      'padding:1.5rem;width:300px;max-width:90vw;">' +
+        '<div style="font-weight:600;font-size:1rem;margin-bottom:0.4rem;">Signal K Login</div>' +
+        '<div style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">' +
+          'Enter your Signal K credentials to enable breaker control.' +
+        '</div>' +
+        '<input id="sk-user" type="text" placeholder="Username" autocomplete="username" style="' + inputStyle + '">' +
+        '<input id="sk-pass" type="password" placeholder="Password" autocomplete="current-password" style="' + inputStyle + '">' +
+        '<div id="sk-err" style="color:var(--red);font-size:0.8rem;min-height:1.1rem;margin-bottom:0.5rem;"></div>' +
+        '<div style="text-align:right;">' +
+          '<button id="sk-login-btn" type="button" style="' +
+            'background:var(--accent);color:#fff;border:none;border-radius:4px;' +
+            'padding:0.45rem 1.1rem;font-size:0.9rem;cursor:pointer;font-family:inherit;">Log In</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(ov);
+    document.getElementById('sk-login-btn').addEventListener('click', doSkLogin);
+    document.getElementById('sk-pass').addEventListener('keydown', function(e) {
+      if (e.keyCode === 13) doSkLogin();
+    });
+    ov.addEventListener('click', function(e) {
+      if (e.target === ov) { ov.style.display = 'none'; pendingPut = null; }
+    });
+  }
+  document.getElementById('sk-err').textContent = '';
+  ov.style.display = 'flex';
+  setTimeout(function() {
+    var u = document.getElementById('sk-user');
+    if (u) u.focus();
+  }, 80);
+}
+
+function doSkLogin() {
+  var user = document.getElementById('sk-user').value.trim();
+  var pass = document.getElementById('sk-pass').value;
+  var errEl = document.getElementById('sk-err');
+  var btn = document.getElementById('sk-login-btn');
+  if (!user || !pass) { errEl.textContent = 'Enter username and password'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Logging in…';
+  fetch('/signalk/v1/auth/login', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user, password: pass }),
+  }).then(function(r) {
+    return r.json().then(function(body) { return { ok: r.ok, body: body }; });
+  }).then(function(result) {
+    btn.disabled = false;
+    btn.textContent = 'Log In';
+    if (result.ok) {
+      if (result.body && result.body.token) {
+        sessionToken = result.body.token;
+        try { sessionStorage.setItem('sk-auth-token', sessionToken); } catch(e) {}
+      }
+      var ov = document.getElementById('sk-login-overlay');
+      if (ov) ov.style.display = 'none';
+      var p = pendingPut;
+      pendingPut = null;
+      if (p) toggleBreaker(p.key, p.value);
+    } else {
+      var msg = (result.body && result.body.message) ? result.body.message : 'Login failed';
+      errEl.textContent = msg;
+    }
+  }).catch(function() {
+    btn.disabled = false;
+    btn.textContent = 'Log In';
+    errEl.textContent = 'Network error — check connection';
+  });
+}
+
+function toggleBreaker(key, newValue) {
+  // Use the freshest available token: one from login session takes priority over the
+  // static embedder token, so a re-login after a 401 immediately takes effect.
+  var token = sessionToken || SK_TOKEN;
+  var url = '/signalk/v1/api/vessels/self/sailsense/breakers/' + key + '/state';
+  if (token) url += '?token=' + encodeURIComponent(token);
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(url, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: headers,
+    body: JSON.stringify({ value: newValue }),
+  }).then(function(r) {
+    if (r.status === 401) {
+      // Clear any stored token — it's invalid — and prompt for credentials.
+      sessionToken = null;
+      try { sessionStorage.removeItem('sk-auth-token'); } catch(e) {}
+      showLoginOverlay(key, newValue);
+    }
+  }).catch(function() {});
+}
+
+initBreakers();
 render();
 fetchVesselName();
 fetchAll();

@@ -1,6 +1,6 @@
 # Sailsense Device Reference
 
-All control commands are published to `cmd/{clientId}/send` as JSON with `state` (`"on"`/`"off"`) or `step` (dimmer index) added to the payload. Retained state for each device is available on the corresponding MQTT topic.
+All control commands are published to `cmd/{hubHostname}/send` where `{hubHostname}` is the Hub's own MQTT hostname — **not** the connecting client's ID. The hostname is available as a retained message at `about/hostname` and should be read at connection time. Retained state for each device is available on the corresponding MQTT topic.
 
 ---
 
@@ -87,7 +87,7 @@ Controlled via `toggleLight(name, state)` or a raw `cmd/{clientId}/send` publish
 
 ## Breakers
 
-Controlled via `toggleBreaker(name, state)`.
+Each breaker's hardware address is published as a retained JSON blob at `breakers/children/{Name}/children/{Name}/cmd` (e.g. `{"nPow": 1, "output": 17}`). This is the authoritative source for rail/output numbers — use it if the table below becomes stale.
 
 | Name | Key | Rail(s) | Output(s) | Live MQTT State Topic | Signal K Path |
 |---|---|---|---|---|---|
@@ -247,13 +247,25 @@ An alert topic is also published per tank at `.../alert` with value `normal` or 
 
 ## Command Reference
 
+### Discover the Hub hostname
+
+Before sending any command, read the retained `about/hostname` topic. This is the target for all commands:
+
+```
+Topic:   about/hostname
+Retain:  true
+Value:   e.g. "H0201DUGW"
+```
+
 ### Publish a command
 
 ```
-Topic:   cmd/{clientId}/send
+Topic:   cmd/{hubHostname}/send
 QoS:     1
 Retain:  false
 ```
+
+`{hubHostname}` is the value from `about/hostname`. The plugin reads this at connect time and stores it as `hubHostname`.
 
 **Toggle on/off:**
 ```json
@@ -265,19 +277,22 @@ Retain:  false
 { "nPow": 1, "output": 11, "step": 3, "topic": "actions/children/nacelle_lights/children/Saloon light" }
 ```
 
-**Multi-output (e.g. Fans):**
+**Multi-output (e.g. Fans — two rails simultaneously):**
 ```json
 { "children": [{ "nPow": 1, "output": 13 }, { "nPow": 2, "output": 11 }], "state": "on", "topic": "breakers/children/Fans/children/Fans" }
 ```
 
-### Helper functions (index.js exports)
+The `topic` field in the payload follows the pattern:
+- Breakers: `breakers/children/{Name}/children/{Name}` (name repeated)
+- Actions (lights/pumps): `actions/children/{group}/children/{name}`
 
-```js
-const { dimLight, toggleLight, toggleBreaker } = require('./index');
+### Finding command parameters without this doc
 
-dimLight('saloon', 3)                    // 45% brightness
-dimLight('saloon', 100)                  // 100% brightness (by percentage)
-toggleLight('saloon', 'off')
-toggleBreaker('hifi', 'on')
-toggleBreaker('fans', 'off')
+Every controllable device publishes its `nPow`/`output` as a retained blob under `{category}/children/{Name}/children/{Name}/cmd`. For example:
+
 ```
+breakers/children/HIFI/children/HIFI/cmd     → {"nPow": 1, "output": 17}
+breakers/children/Fans/children/Fans/cmd     → {"children": [{"nPow": 1, "output": 13}, {"nPow": 2, "output": 11}]}
+```
+
+Subscribe to `breakers/#` or `actions/#` and look for `/cmd` topics to discover all addresses live.

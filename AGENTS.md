@@ -19,6 +19,24 @@ Key functions in `index.js`:
 - `topicToPath(topic)` — converts an MQTT topic to a `sailsense.*` Signal K path (strips `children` segments, sanitizes special chars)
 - `coerce(str)` — converts string MQTT payloads to native JS types (boolean, number, parsed JSON, or string)
 
+Key plugin-scope closure variables in `start()`:
+- `client` — the active MQTT client; `null` when stopped
+- `activeClientId` — the plugin's own random MQTT client ID (used only as the connection's `clientId` option, not for command routing)
+- `hubHostname` — the Hub's own MQTT hostname, read from the retained `about/hostname` topic at connection time (e.g. `H0201DUGW`); this is the target for all control commands
+
+### Breaker write control
+
+Breaker tiles are interactive. Clicking a tile in the dashboard sends a Signal K PUT to `/signalk/v1/api/vessels/self/sailsense/breakers/{key}/state`, which the plugin handles via `app.registerPutHandler`.
+
+The put handler:
+1. Looks up the breaker's hardware address in `BREAKER_MAP` (a module-level constant)
+2. Builds the MQTT command payload (single output or `children` array for multi-rail)
+3. Publishes to `cmd/{hubHostname}/send` — **the Hub's hostname, not the plugin's client ID**
+
+`BREAKER_MAP` key format matches `toKey(breakerName)` exactly (spaces → `_`, hyphens preserved). The `name` field holds the original name for use in the MQTT `topic` field of the command payload.
+
+**Critical:** The command topic is `cmd/{hubHostname}/send` where `hubHostname` comes from the `about/hostname` retained MQTT message. Using the plugin's own random client ID as the target (as DEVICES.md originally implied) will silently fail — the Hub never subscribed to that topic. The hub's hostname is subscribed to alongside the normal topic groups at `client.on('connect')` time.
+
 ### Dashboard webapp (`public/index.html`)
 
 A single-file vanilla JS webapp served by Signal K at `/signalk-sailsense/`. No build step, no framework. Five tabs:
@@ -44,9 +62,9 @@ Engine batteries (from `sailsense.batteries.*`) are labeled by inspecting the ba
 ## Conventions
 
 - **No build step.** `index.js` and `public/index.html` are plain CommonJS/vanilla JS; no transpilation, no TypeScript, no bundler.
-- **No test suite.** There is no test framework configured (`npm test` exits 1). Do not add one without being asked.
+- **Test suite:** `node --test test/index.test.js` (Node 18+ built-in runner, zero extra dependencies). Tests cover `isLiveData`, `topicToPath`, `coerce`, and the plugin factory shape. The test mock for `app` does **not** include `registerPutHandler` — add it to `makeApp()` in the test if you need to test put handler registration.
 - **Single dependency:** `mqtt` (^5.x). Do not add dependencies without being asked.
-- **Signal K plugin API:** use `app.handleMessage()` to publish values, `app.setPluginStatus()` for status, `app.setPluginError()` for errors. Do not use Signal K APIs not already present in the file.
+- **Signal K plugin API:** use `app.handleMessage()` to publish values, `app.setPluginStatus()` for status, `app.setPluginError()` for errors, `app.registerPutHandler(context, path, callback)` to handle writes. Always guard with `if (typeof app.registerPutHandler === 'function')` for compatibility with older SK server versions.
 - **MQTT topic groups** are defined in `TOPIC_MAP` at the top of `index.js`. Adding a new group means adding an entry there plus a corresponding schema property in the `topics` object.
 - **`isLiveData` is intentionally conservative.** It exists to suppress high-volume metadata noise. When in doubt, keep it strict.
 - **Webapp path reads:** always read breaker state from `sailsense.breakers.{Name}.state` — the deeper `sailsense.breakers.{Name}.{Name}.state` path exists as a retained MQTT value but does not reflect live state.

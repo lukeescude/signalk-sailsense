@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1
+
+### Fixed
+- Breaker tiles now work on touchscreen clients (iPhone, MFD) that have no Signal K session cookie. The dashboard detects a 401 response and shows an in-page login overlay; after entering Signal K credentials the JWT is stored in `sessionStorage` and the command is retried automatically. Subsequent taps reuse the stored token without prompting again.
+- PUT requests now send the auth token via both `Authorization: Bearer` header and `?token=` query parameter to maximise compatibility across Signal K server versions and middleware ordering.
+
 ## 1.2.0
 
 ### Added
