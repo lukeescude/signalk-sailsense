@@ -185,6 +185,7 @@ describe('plugin factory', () => {
     setPluginStatus: () => {},
     setPluginError:  () => {},
     handleMessage:   () => {},
+    get:             () => {},
   });
 
   test('default export is a function', () =>

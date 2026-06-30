@@ -25,34 +25,42 @@ body { background: var(--bg); color: var(--text); font-family: system-ui, -apple
 header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 0 1.25rem;
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+}
+header h1 { font-size: 1.05rem; font-weight: 600; }
+#vessel-brand {
   display: flex;
   align-items: center;
+  padding: 0 1.25rem;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
 }
-header h1 { font-size: 1.05rem; font-weight: 600; padding: 0.9rem 0; }
 #status-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--red); flex-shrink: 0;
-  margin-right: 0.75rem;
+  margin-right: 0.6rem;
   transition: background 0.3s;
 }
 #status-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
 
 nav {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
   display: flex;
   overflow-x: auto;
+  flex: 1;
 }
 nav button {
   background: none; border: none;
   border-bottom: 3px solid transparent;
   color: var(--muted); cursor: pointer;
-  font-size: 0.875rem; font-family: inherit;
-  padding: 0.8rem 1.25rem;
+  font-size: 0.9rem; font-family: inherit;
+  padding: 1rem 1.25rem;
   white-space: nowrap;
   transition: color 0.15s, border-color 0.15s;
+  display: flex; align-items: center;
 }
+nav button svg { margin-right: 0.35rem; flex-shrink: 0; }
 nav button.active { color: var(--text); border-bottom-color: var(--accent); }
 nav button:hover:not(.active) { color: var(--text); }
 
@@ -66,14 +74,15 @@ nav button:hover:not(.active) { color: var(--text); }
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 8px; padding: 1.25rem;
 }
-.battery-name { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; color: var(--text); }
+.battery-name { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; color: var(--text); display: flex; align-items: center; }
+.battery-name svg { margin-right: 0.3rem; flex-shrink: 0; }
 .battery-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.15rem; }
 .stat-row { display: flex; justify-content: space-between; align-items: baseline; }
 .stat-value { font-size: 1.35rem; font-weight: 700; }
 .stat-unit { font-size: 0.78rem; color: var(--muted); margin-left: 0.15rem; }
 .soc-bar { margin-top: 1rem; }
-.soc-track { background: var(--bg); border-radius: 4px; height: 8px; overflow: hidden; }
+.soc-track { background: var(--bg); border-radius: 4px; height: 12px; overflow: hidden; }
 .soc-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
 .soc-labels { font-size: 0.7rem; color: var(--muted); display: flex; justify-content: space-between; margin-top: 0.3rem; }
 
@@ -86,12 +95,14 @@ nav button:hover:not(.active) { color: var(--text); }
 .tank-group { margin-bottom: 1.75rem; }
 .tank-card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; padding: 1.1rem;
+  border-radius: 8px; padding: 1.25rem;
 }
-.tank-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.6rem; }
-.tank-name { font-size: 0.85rem; font-weight: 600; }
-.tank-pct { font-size: 1.4rem; font-weight: 700; }
-.tank-track { background: var(--bg); border-radius: 4px; height: 10px; overflow: hidden; margin-bottom: 0.5rem; }
+.tank-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.25rem; }
+.tank-name { font-size: 0.95rem; font-weight: 600; display: inline-flex; align-items: center; }
+.tank-name svg { margin-right: 0.3rem; flex-shrink: 0; }
+.tank-subtitle { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem; }
+.tank-pct { font-size: 1.35rem; font-weight: 700; }
+.tank-track { background: var(--bg); border-radius: 4px; height: 12px; overflow: hidden; margin-bottom: 0.3rem; }
 .tank-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
 .tank-fill.water { background: #3b82f6; }
 .tank-fill.fuel  { background: #f59e0b; }
@@ -99,10 +110,10 @@ nav button:hover:not(.active) { color: var(--text); }
 .tank-litres { font-size: 0.78rem; color: var(--muted); }
 
 /* Breakers */
-.breaker-grid { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.breaker-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); }
 .breaker {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; padding: 0.8rem 1rem;
+  border-radius: 8px; padding: 1.25rem 1.5rem;
   display: flex; align-items: center; width: 100%;
   cursor: pointer; transition: border-color 0.15s;
   touch-action: manipulation;
@@ -115,14 +126,15 @@ nav button:hover:not(.active) { color: var(--text); }
 }
 .breaker:hover, .breaker:active { border-color: var(--accent); }
 .breaker-dot {
-  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
-  margin-right: 0.75rem;
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  margin-right: 1.1rem;
   background: #374151; transition: background 0.3s, box-shadow 0.3s;
 }
-.breaker-dot.on  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.breaker-dot.on  { background: var(--green); box-shadow: 0 0 8px var(--green); }
 .breaker-dot.off { background: var(--red); }
-.breaker-name { font-size: 0.83rem; line-height: 1.3; }
-.breaker-val  { font-size: 0.68rem; color: var(--muted); margin-top: 0.1rem; }
+.breaker-text { display: flex; justify-content: space-between; align-items: baseline; flex: 1; }
+.breaker-name { font-size: 1.1rem; line-height: 1.3; }
+.breaker-val  { font-size: 0.8rem; color: var(--muted); margin-left: 0.75rem; flex-shrink: 0; }
 
 /* Lights */
 .light-section { margin-bottom: 1.5rem; }
@@ -151,17 +163,33 @@ nav button:hover:not(.active) { color: var(--text); }
 <body>
 
 <header>
-  <div id="status-dot"></div>
-  <h1 id="vessel-name">SailSense Hub</h1>
+  <nav>
+    <button class="active" data-tab="home">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Home
+    </button>
+    <button data-tab="power">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      Power
+    </button>
+    <button data-tab="tanks">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+      Tanks
+    </button>
+    <button data-tab="breakers">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+      Breakers
+    </button>
+    <button data-tab="lights">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+      Lights &amp; Pumps
+    </button>
+  </nav>
+  <div id="vessel-brand">
+    <div id="status-dot"></div>
+    <h1 id="vessel-name">SailSense Hub</h1>
+  </div>
 </header>
-
-<nav>
-  <button class="active" data-tab="home">Home</button>
-  <button data-tab="power">Power</button>
-  <button data-tab="tanks">Tanks</button>
-  <button data-tab="breakers">Breakers</button>
-  <button data-tab="lights">Lights &amp; Pumps</button>
-</nav>
 
 <div id="tab-home"     class="panel active"></div>
 <div id="tab-power"    class="panel"></div>
@@ -190,7 +218,7 @@ const LIGHT_GROUPS = [
   { title: 'Nacelle Lights',      group: 'nacelle_lights',  names: ['Saloon light', 'Saloon indirect light', 'Cockpit light'] },
   { title: 'Exterior Lights',     group: 'exterior_light',  names: ['Submarine light', 'Foredeck courtesy light', 'Under bridge deck light', 'Cockpit courtesy light', 'Spreader light'] },
   { title: 'Port Cabin Lights',   group: 'port_lights',     names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Port ' },
-  { title: 'Stbd Cabin Lights', group: 'stbd_lights',  names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Stbd ' },
+  { title: 'Starboard Cabin Lights', group: 'stbd_lights',  names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Starboard ' },
 ];
 
 const PUMP_GROUPS = [
@@ -202,6 +230,8 @@ const PUMP_GROUPS = [
 
 // Flat map of Signal K path → value, e.g. "sailsense.batteries.Main.Bank1.voltage" → 12.6
 const state = {};
+var hiddenBreakers = [];
+var breakerOutputs = {};
 var activeWS = null;
 var sessionToken = null;
 try { sessionToken = sessionStorage.getItem('sk-auth-token'); } catch(e) {}
@@ -225,7 +255,7 @@ function toKey(name) {
 }
 
 function toLabel(name) {
-  return name.replace(/STBD/g, 'Stbd');
+  return name.replace(/STBD/g, 'Starboard');
 }
 
 function toTitleCase(s) {
@@ -273,6 +303,17 @@ function flatten(obj, prefix) {
     if (k === '$source' || k === 'timestamp' || k === 'sentence' || k === 'pgn') continue;
     flatten(obj[k], prefix + '.' + k);
   }
+}
+
+async function fetchConfig() {
+  try {
+    const r = await fetch('/signalk-sailsense/config');
+    if (r.ok) {
+      const cfg = await r.json();
+      if (Array.isArray(cfg.hiddenBreakers)) hiddenBreakers = cfg.hiddenBreakers;
+    if (cfg.breakerOutputs && typeof cfg.breakerOutputs === 'object') breakerOutputs = cfg.breakerOutputs;
+    }
+  } catch (_) {}
 }
 
 async function fetchVesselName() {
@@ -384,19 +425,23 @@ function renderSolarCard() {
     else totalCurrent = (totalCurrent != null ? totalCurrent : 0) + val;
   }
   var barPct = totalPower != null ? Math.min(totalPower / 2500 * 100, 100) : 0;
-  return '<div class="battery-group">'
-    + '<div class="battery-name">Solar Yield</div>'
+  return '<div class="battery-group" style="display:flex;flex-direction:column">'
+    + '<div class="battery-name">' + SUN_ICON + 'Solar Yield</div>'
     + '<div class="battery-stats">'
-    +   '<div class="stat-row" style="grid-column:span 2">'
+    +   '<div>'
     +     '<div class="stat-label">Power</div>'
     +     '<div class="stat-value">' + fmt(totalPower, 0) + '<span class="stat-unit">W</span></div>'
     +   '</div>'
-    +   '<div class="stat-row" style="grid-column:span 2">'
+    +   '<div>'
     +     '<div class="stat-label">Current</div>'
     +     '<div class="stat-value">' + fmt(totalCurrent, 1) + '<span class="stat-unit">A</span></div>'
     +   '</div>'
+    +   '<div class="stat-row" style="grid-column:span 2">'
+    +     '<div class="stat-label">Utilization</div>'
+    +     '<div class="stat-value">' + (totalPower != null ? Math.round(barPct) + '<span class="stat-unit">%</span>' : '–') + '</div>'
+    +   '</div>'
     + '</div>'
-    + '<div class="soc-bar">'
+    + '<div class="soc-bar" style="margin-top:auto">'
     +   '<div class="soc-track">'
     +     '<div class="soc-fill" style="width:' + barPct + '%; background:var(--amber)"></div>'
     +   '</div>'
@@ -405,56 +450,74 @@ function renderSolarCard() {
     + '</div>';
 }
 
-function renderLoadsCard() {
+function renderACLoadsCard() {
   var acPower = null;
   var acCurrent = null;
-  var p, mv, val;
-  for (p in state) {
-    mv = p.match(/^electrical\.inverters\.([^.]+)\.acout\.(power|current)$/);
+  for (var p in state) {
+    var mv = p.match(/^electrical\.inverters\.([^.]+)\.acout\.(power|current)$/);
     if (!mv) continue;
-    val = Number(state[p]);
+    var val = Number(state[p]);
     if (isNaN(val)) continue;
     if (mv[2] === 'power') acPower = (acPower != null ? acPower : 0) + val;
     else acCurrent = (acCurrent != null ? acCurrent : 0) + val;
   }
-
-  var dcPower = state['electrical.venus.dcPower'] != null ? Number(state['electrical.venus.dcPower']) : null;
-  if (dcPower != null && isNaN(dcPower)) dcPower = null;
-
-  var dcCurrent = null;
-  if (dcPower != null) {
-    for (p in state) {
-      mv = p.match(/^electrical\.batteries\.([^.]+)\.voltage$/);
-      if (!mv) continue;
-      val = Number(state[p]);
-      if (!isNaN(val) && val > 0) { dcCurrent = dcPower / val; break; }
-    }
-  }
-
-  return '<div class="battery-group">'
-    + '<div class="battery-name">Loads</div>'
+  var barPct = acPower != null ? Math.min(acPower / 6000 * 100, 100) : 0;
+  return '<div class="battery-group" style="display:flex;flex-direction:column">'
+    + '<div class="battery-name">' + AC_ICON + 'AC Loads</div>'
     + '<div class="battery-stats">'
-    +   '<div>'
-    +     '<div class="stat-label">AC Power</div>'
-    +     '<div class="stat-value">' + fmt(acPower, 0) + '<span class="stat-unit">W</span></div>'
+    +   '<div><div class="stat-label">Power</div><div class="stat-value">' + fmt(acPower, 0) + '<span class="stat-unit">W</span></div></div>'
+    +   '<div><div class="stat-label">Current</div><div class="stat-value">' + fmt(acCurrent, 1) + '<span class="stat-unit">A</span></div></div>'
+    +   '<div class="stat-row" style="grid-column:span 2">'
+    +     '<div class="stat-label">Utilization</div>'
+    +     '<div class="stat-value">' + (acPower != null ? Math.round(barPct) + '<span class="stat-unit">%</span>' : '–') + '</div>'
     +   '</div>'
-    +   '<div>'
-    +     '<div class="stat-label">AC Current</div>'
-    +     '<div class="stat-value">' + fmt(acCurrent, 1) + '<span class="stat-unit">A</span></div>'
-    +   '</div>'
-    +   '<div>'
-    +     '<div class="stat-label">DC Power</div>'
-    +     '<div class="stat-value">' + fmt(dcPower, 0) + '<span class="stat-unit">W</span></div>'
-    +   '</div>'
-    +   '<div>'
-    +     '<div class="stat-label">DC Current</div>'
-    +     '<div class="stat-value">' + fmt(dcCurrent, 1) + '<span class="stat-unit">A</span></div>'
-    +   '</div>'
+    + '</div>'
+    + '<div class="soc-bar" style="margin-top:auto">'
+    +   '<div class="soc-track"><div class="soc-fill" style="width:' + barPct + '%;background:var(--amber)"></div></div>'
+    +   '<div class="soc-labels"><span>0W</span><span>6000W</span></div>'
     + '</div>'
     + '</div>';
 }
 
-function renderTankCardFromValues(label, pct, litres, type) {
+function renderDCLoadsCard() {
+  var dcPower = state['electrical.venus.dcPower'] != null ? Number(state['electrical.venus.dcPower']) : null;
+  if (dcPower != null && isNaN(dcPower)) dcPower = null;
+  var dcCurrent = null;
+  if (dcPower != null) {
+    for (var p in state) {
+      var mv = p.match(/^electrical\.batteries\.([^.]+)\.voltage$/);
+      if (!mv) continue;
+      var val = Number(state[p]);
+      if (!isNaN(val) && val > 0) { dcCurrent = dcPower / val; break; }
+    }
+  }
+  var barPct = dcPower != null ? Math.min(dcPower / 6000 * 100, 100) : 0;
+  return '<div class="battery-group" style="display:flex;flex-direction:column">'
+    + '<div class="battery-name">' + DC_ICON + 'DC Loads</div>'
+    + '<div class="battery-stats">'
+    +   '<div><div class="stat-label">Power</div><div class="stat-value">' + fmt(dcPower, 0) + '<span class="stat-unit">W</span></div></div>'
+    +   '<div><div class="stat-label">Current</div><div class="stat-value">' + fmt(dcCurrent, 1) + '<span class="stat-unit">A</span></div></div>'
+    +   '<div class="stat-row" style="grid-column:span 2">'
+    +     '<div class="stat-label">Utilization</div>'
+    +     '<div class="stat-value">' + (dcPower != null ? Math.round(barPct) + '<span class="stat-unit">%</span>' : '–') + '</div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="soc-bar" style="margin-top:auto">'
+    +   '<div class="soc-track"><div class="soc-fill" style="width:' + barPct + '%;background:var(--amber)"></div></div>'
+    +   '<div class="soc-labels"><span>0W</span><span>6000W</span></div>'
+    + '</div>'
+    + '</div>';
+}
+
+var WATER_ICON  = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C9 7 5 11 5 15a7 7 0 0014 0c0-4-4-8-7-12z"/></svg>';
+var TOILET_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="15" y="1" width="8" height="10" rx="2"/><rect x="1" y="10" width="21" height="2" rx="1"/><path d="M2 12C2 18 7 21 12 21C17 21 22 18 22 12"/><rect x="7" y="21" width="10" height="2" rx="0.5"/></svg>';
+var ENGINE_ICON  = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="13" height="8" rx="1"/><path d="M4 10H2v2h2M4 13H2v2h2"/><path d="M17 10h2a2 2 0 010 4h-2"/><rect x="7" y="5" width="3" height="3" rx="0.5"/><rect x="5.5" y="3.5" width="6" height="1.5" rx="0.5"/></svg>';
+var BATTERY_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="5" width="22" height="17" rx="2"/><path d="M6 5V2h4v3"/><path d="M14 5V2h4v3"/><line x1="5" y1="13" x2="9" y2="13"/><line x1="14" y1="13" x2="19" y2="13"/><line x1="16.5" y1="10.5" x2="16.5" y2="15.5"/></svg>';
+var SUN_ICON     = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></svg>';
+var AC_ICON      = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12C5 6 9 6 12 12C15 18 19 18 22 12"/></svg>';
+var DC_ICON      = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15" stroke-dasharray="4 2"/></svg>';
+
+function renderTankCardFromValues(label, subtitle, pct, litres, type) {
   var display = pct != null ? Math.round(Number(pct)) : null;
   var currentGal = litres != null ? Number(litres) * 0.264172 : null;
   var totalGal = (litres != null && pct != null && Number(pct) > 0)
@@ -462,11 +525,13 @@ function renderTankCardFromValues(label, pct, litres, type) {
   var volLabel = currentGal != null && totalGal != null
     ? fmt(currentGal, 1) + ' / ' + fmt(totalGal, 0) + ' gal'
     : currentGal != null ? fmt(currentGal, 1) + ' gal' : 'No data';
+  var icon = type === 'water' ? WATER_ICON : type === 'black' ? TOILET_ICON : type === 'fuel' ? ENGINE_ICON : '';
   return '<div class="tank-card">'
     + '<div class="tank-header">'
-    +   '<span class="tank-name">' + label + '</span>'
+    +   '<span class="tank-name">' + icon + label + '</span>'
     +   '<span class="tank-pct">' + (display != null ? display + '%' : '–') + '</span>'
     + '</div>'
+    + (subtitle ? '<div class="tank-subtitle">' + subtitle + '</div>' : '')
     + '<div class="tank-track">'
     +   '<div class="tank-fill ' + type + '" style="width:' + Math.min(display != null ? display : 0, 100) + '%"></div>'
     + '</div>'
@@ -507,14 +572,15 @@ function renderHome() {
     + '<div class="grid">'
     + Object.keys(houseBanks).map(function(id, i) { return renderHouseBatteryCard(id, houseBanks[id], i); }).join('')
     + renderSolarCard()
-    + renderLoadsCard()
+    + renderACLoadsCard()
+    + renderDCLoadsCard()
     + '</div></div>'
     + '<div class="tank-group">'
     + '<div class="tank-section-title">Tanks</div>'
     + '<div class="grid">'
-    +   renderTankCardFromValues('Fresh Water', avgPct, totalL, 'water')
-    +   renderTankCard('Port Blackwater', base + '.blackwater_tanks.blackwater_tank_portside.levels', 'black')
-    +   renderTankCard('Stbd Blackwater', base + '.blackwater_tanks.blackwater_tank_starboard.levels', 'black')
+    +   renderTankCardFromValues('Fresh Water', 'Total', avgPct, totalL, 'water')
+    +   renderTankCard('Black Water', 'Port', base + '.blackwater_tanks.blackwater_tank_portside.levels', 'black')
+    +   renderTankCard('Black Water', 'Starboard', base + '.blackwater_tanks.blackwater_tank_starboard.levels', 'black')
     + '</div>'
     + '</div>';
 }
@@ -543,14 +609,17 @@ function renderHouseBatteryCard(id, data, index) {
     ? Math.round(Number(data['capacity.stateOfCharge']) * 100) : null;
   const color = soc != null ? socColor(soc) : '#6b7280';
   const label = 'House ' + (index + 1);
+  const voltage = data['voltage'] != null ? Number(data['voltage']) : null;
   const current = data['current'] != null ? Number(data['current']) : null;
+  const power = voltage != null && current != null ? voltage * current : null;
   const currentColor = current == null ? '' : current < 0 ? 'var(--red)' : '#60a5fa';
+  const powerColor = power == null ? '' : power < 0 ? 'var(--red)' : '#60a5fa';
   return `<div class="battery-group">
-    <div class="battery-name">${label}</div>
+    <div class="battery-name">${BATTERY_ICON}${label}</div>
     <div class="battery-stats">
       <div>
-        <div class="stat-label">Voltage</div>
-        <div class="stat-value">${fmt(data['voltage'])}<span class="stat-unit">V</span></div>
+        <div class="stat-label">Power</div>
+        <div class="stat-value"${powerColor ? ' style="color:' + powerColor + '"' : ''}>${fmt(power, 0)}<span class="stat-unit">W</span></div>
       </div>
       <div>
         <div class="stat-label">Current</div>
@@ -609,7 +678,7 @@ function renderPower() {
           const color = pct != null ? socColor(pct) : '#6b7280';
           const bankLower = bank.toLowerCase();
           const label = /port/.test(bankLower) ? 'Port'
-            : /stbd|starboard/.test(bankLower) ? 'Stbd'
+            : /stbd|starboard/.test(bankLower) ? 'Starboard'
             : bank.replace(/\./g, ' › ');
           return `<div class="battery-group">
             <div class="battery-name">${label}</div>
@@ -647,7 +716,7 @@ function renderPower() {
 
 // ─── Tanks tab ────────────────────────────────────────────────────────────────
 
-function renderTankCard(label, levelPrefix, type) {
+function renderTankCard(label, subtitle, levelPrefix, type) {
   const pct    = state[levelPrefix + '.pct'];
   const litres = state[levelPrefix + '.L'];
   const display = pct != null ? Math.round(Number(pct)) : null;
@@ -657,11 +726,13 @@ function renderTankCard(label, levelPrefix, type) {
   const volLabel = currentGal != null && totalGal != null
     ? fmt(currentGal, 1) + ' / ' + fmt(totalGal, 0) + ' gal'
     : currentGal != null ? fmt(currentGal, 1) + ' gal' : 'No data';
+  const icon = type === 'water' ? WATER_ICON : type === 'black' ? TOILET_ICON : type === 'fuel' ? ENGINE_ICON : '';
   return `<div class="tank-card">
     <div class="tank-header">
-      <span class="tank-name">${label}</span>
+      <span class="tank-name">${icon}${label}</span>
       <span class="tank-pct">${display != null ? display + '%' : '–'}</span>
     </div>
+    ${subtitle ? `<div class="tank-subtitle">${subtitle}</div>` : ''}
     <div class="tank-track">
       <div class="tank-fill ${type}" style="width:${Math.min(display != null ? display : 0, 100)}%"></div>
     </div>
@@ -673,30 +744,46 @@ function renderTanks() {
   const base = 'sailsense.tanks';
   document.getElementById('tab-tanks').innerHTML = `
     <div class="tank-group">
-      <div class="tank-section-title">Fresh Water (285 L each)</div>
+      <div class="tank-section-title">Fresh Water (75 gal each)</div>
       <div class="grid">
-        ${renderTankCard('Port Fresh Water', base + '.water_tanks.water_tank_portside.levels', 'water')}
-        ${renderTankCard('Stbd Fresh Water', base + '.water_tanks.water_tank_starboard.levels', 'water')}
+        ${renderTankCard('Fresh Water', 'Port', base + '.water_tanks.water_tank_portside.levels', 'water')}
+        ${renderTankCard('Fresh Water', 'Starboard', base + '.water_tanks.water_tank_starboard.levels', 'water')}
       </div>
     </div>
     <div class="tank-group">
-      <div class="tank-section-title">Diesel / Fuel (276 L each)</div>
+      <div class="tank-section-title">Diesel / Fuel (73 gal each)</div>
       <div class="grid">
-        ${renderTankCard('Port Fuel', base + '.gazoil_tanks.gazoil_tank_portside.levels', 'fuel')}
-        ${renderTankCard('Stbd Fuel', base + '.gazoil_tanks.gazoil_tank_starboard.levels', 'fuel')}
+        ${renderTankCard('Diesel', 'Port', base + '.gazoil_tanks.gazoil_tank_portside.levels', 'fuel')}
+        ${renderTankCard('Diesel', 'Starboard', base + '.gazoil_tanks.gazoil_tank_starboard.levels', 'fuel')}
       </div>
     </div>
     <div class="tank-group">
-      <div class="tank-section-title">Blackwater (63 L each)</div>
+      <div class="tank-section-title">Blackwater (17 gal each)</div>
       <div class="grid">
-        ${renderTankCard('Port Blackwater', base + '.blackwater_tanks.blackwater_tank_portside.levels', 'black')}
-        ${renderTankCard('Stbd Blackwater', base + '.blackwater_tanks.blackwater_tank_starboard.levels', 'black')}
+        ${renderTankCard('Black Water', 'Port', base + '.blackwater_tanks.blackwater_tank_portside.levels', 'black')}
+        ${renderTankCard('Black Water', 'Starboard', base + '.blackwater_tanks.blackwater_tank_starboard.levels', 'black')}
       </div>
     </div>
   `;
 }
 
 // ─── Breakers tab ─────────────────────────────────────────────────────────────
+
+function getBreakerCurrent(key) {
+  var outputs = breakerOutputs[key];
+  if (!outputs || !outputs.length) return null;
+  var total = 0;
+  var found = false;
+  for (var i = 0; i < outputs.length; i++) {
+    var path = 'sailsense.powernet.device.powerail.' + outputs[i].nPow + '.outputs.' + outputs[i].output + '.settings';
+    var s = state[path];
+    if (s != null && typeof s === 'object' && s.current != null) {
+      total += Number(s.current);
+      found = true;
+    }
+  }
+  return found ? total : null;
+}
 
 function bindBreakerTile(tile) {
   tile.addEventListener('click', function() {
@@ -706,7 +793,6 @@ function bindBreakerTile(tile) {
     // The real state arrives via WS/REST within ~1 s and will correct if needed.
     state['sailsense.breakers.' + key + '.state'] = newVal ? 'on' : 'off';
     tile.querySelector('.breaker-dot').className = 'breaker-dot ' + (newVal ? 'on' : 'off');
-    tile.querySelector('.breaker-val').textContent = newVal ? 'ON' : 'OFF';
     toggleBreaker(key, newVal);
   });
 }
@@ -715,13 +801,13 @@ function initBreakers() {
   var container = document.getElementById('tab-breakers');
   container.innerHTML =
     '<div class="breaker-grid">' +
-    BREAKERS.map(function(name) {
+    BREAKERS.filter(function(name) { return hiddenBreakers.indexOf(name) === -1; }).map(function(name) {
       var key = toKey(name);
       return '<button type="button" class="breaker" data-key="' + key + '">' +
         '<div class="breaker-dot"></div>' +
-        '<div>' +
+        '<div class="breaker-text">' +
           '<div class="breaker-name">' + toTitleCase(toLabel(name)) + '</div>' +
-          '<div class="breaker-val">no data</div>' +
+          '<div class="breaker-val">—</div>' +
         '</div>' +
         '</button>';
     }).join('') +
@@ -736,12 +822,12 @@ function renderBreakers() {
     var val   = state['sailsense.breakers.' + key + '.state'];
     var on    = isOn(val);
     var off   = val === false || val === 'off' || val === 'False';
-    var cls   = on ? 'on' : off ? 'off' : '';
-    var label = val == null ? 'no data' : on ? 'ON' : 'OFF';
-    var tile  = document.querySelector('.breaker[data-key="' + key + '"]');
+    var cls     = on ? 'on' : off ? 'off' : '';
+    var current = getBreakerCurrent(key);
+    var tile    = document.querySelector('.breaker[data-key="' + key + '"]');
     if (!tile) return;
     tile.querySelector('.breaker-dot').className = 'breaker-dot' + (cls ? ' ' + cls : '');
-    tile.querySelector('.breaker-val').textContent = label;
+    tile.querySelector('.breaker-val').textContent = current != null ? fmt(current, 1) + ' A' : '—';
   });
 }
 
@@ -798,7 +884,7 @@ function showLoginOverlay(key, value) {
     ov.id = 'sk-login-overlay';
     ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;' +
       'background:rgba(0,0,0,0.65);z-index:10000;' +
-      'display:flex;align-items:center;justify-content:center;';
+      'display:flex;align-items:flex-start;justify-content:center;padding-top:6vh;';
     var inputStyle = 'display:block;width:100%;box-sizing:border-box;' +
       'padding:0.5rem 0.75rem;margin-bottom:0.6rem;' +
       'background:var(--surface);border:1px solid var(--border);border-radius:4px;' +
@@ -898,12 +984,14 @@ function toggleBreaker(key, newValue) {
   }).catch(function() {});
 }
 
-initBreakers();
-render();
 fetchVesselName();
 fetchAll();
 setInterval(fetchAll, POLL_MS);
 connectWS();
+fetchConfig().then(function() {
+  initBreakers();
+  render();
+});
 </script>
 </body>
 </html>

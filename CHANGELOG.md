@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.2.2
+
+### Added
+- **Inline SVG icons** throughout the dashboard — all icons are stroke-based (`fill="none"`, `stroke="currentColor"`) at 13×13 px for visual consistency:
+  - Tank cards: water droplet (fresh water), side-view toilet (black water), engine block (diesel)
+  - Electrical cards: car battery with terminals and +/− symbols (House Battery), sun with rays (Solar Yield), sine wave (AC Loads), solid + dashed line pair (DC Loads)
+- **AC Loads** and **DC Loads** split into separate tiles on the Home tab (previously combined into a single Loads card)
+- **House Battery** card now shows Power (voltage × current, in watts) instead of Voltage; coloured red when discharging, blue when charging
+- **Hidden breakers** configurable via Signal K plugin settings (`hiddenBreakers` array); dashboard fetches config from `/signalk-sailsense/config` at startup
+- **Per-breaker amp draw** displayed on breaker tiles, read from `sailsense.powernet.device.powerail.{N}.outputs.{M}.settings` via WebSocket
+- Navigation tabs moved into the header bar alongside vessel name and WebSocket status dot to conserve vertical space on MFDs
+- Nav tabs include inline SVG icons (home, lightning bolt, cylinder, circuit breaker, light bulb)
+- Breaker tiles enlarged for easier touch interaction on small MFD screens
+- Tank card titles restructured: type as main title (e.g. "Fresh Water", "Black Water", "Diesel"), port/starboard/average as subtitle below
+- All "Stbd" labels changed to "Starboard" throughout the UI (via `toLabel()`)
+- Tank volumes converted from litres to US gallons across all displays
+- Solar Yield, AC Loads, and DC Loads cards use a 2-column stat layout with a progress bar pinned to the card bottom
+- Progress bar height increased to 12 px across battery, solar, and load cards
+
+### Fixed
+- Test suite mock updated to include `app.get` stub, matching the factory-level config endpoint registration added in 1.2.1
+
 ## 1.2.1
 
 ### Fixed

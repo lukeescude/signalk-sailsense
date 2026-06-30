@@ -1,7 +1,7 @@
 {
   "name": "signalk-sailsense",
-  "version": "1.2.1",
-  "description": "Connects to a SailSense Hub via MQTT and publishes raw sensor data to Signal K",
+  "version": "1.2.2",
+  "description": "Connects to a SailSense Hub, and publishes raw data to SignalK. Additionally exposes a web application for viewing the data and manipulating circuit breakers.",
   "main": "index.js",
   "scripts": {
     "test": "node --test test/index.test.js"

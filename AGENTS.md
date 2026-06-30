@@ -51,9 +51,12 @@ Data flow: WebSocket at `/signalk/v1/stream` (primary, live) with REST polling e
 
 ### Electrical cards (Home tab)
 
-- **House Battery** — one card per `electrical.batteries.*` bank; labeled "House 1", "House 2", etc. by index. Current is coloured: negative → `var(--red)`, positive → `#60a5fa`.
-- **Solar Yield** — aggregates `electrical.solar.*.panelPower` (W) and `electrical.solar.*.current` (A) across all controllers. Includes an amber progress bar scaled 0–2500 W.
-- **Loads** — AC Power/Current from `electrical.inverters.*.acout.power/.current` (summed); DC Power from `electrical.venus.dcPower`; DC Current derived as `dcPower / batteryVoltage` using the first available `electrical.batteries.*.voltage` in state.
+- **House Battery** — one card per `electrical.batteries.*` bank; labeled "House 1", "House 2", etc. by index. Displays Power (voltage × current, coloured: negative → `var(--red)`, positive → `#60a5fa`) and Current. Battery icon (`BATTERY_ICON`) in card title.
+- **Solar Yield** — aggregates `electrical.solar.*.panelPower` (W) and `electrical.solar.*.current` (A) across all controllers. Amber progress bar scaled 0–2500 W. Sun icon (`SUN_ICON`) in card title.
+- **AC Loads** — separate tile; Power/Current from `electrical.inverters.*.acout.power/.current` (summed). Amber progress bar 0–6000 W. AC sine-wave icon (`AC_ICON`) in card title.
+- **DC Loads** — separate tile; DC Power from `electrical.venus.dcPower`; DC Current derived as `dcPower / batteryVoltage`. Amber progress bar 0–6000 W. DC symbol icon (`DC_ICON`) in card title.
+
+All four electrical cards use a 2-column stat grid with a `% of Limit` utilization row spanning both columns, and a progress bar pinned to the card bottom via `margin-top: auto` on `.soc-bar`.
 
 ### Engine battery labels (Power tab)
 
@@ -70,9 +73,19 @@ Engine batteries (from `sailsense.batteries.*`) are labeled by inspecting the ba
 - **Webapp path reads:** always read breaker state from `sailsense.breakers.{Name}.state` — the deeper `sailsense.breakers.{Name}.{Name}.state` path exists as a retained MQTT value but does not reflect live state.
 - **`topicToPath` sanitisation** must be mirrored exactly in the webapp's `toKey()` function: `%` → `pct`, all non-`[a-zA-Z0-9_-]` characters → `_`.
 - **Display labels vs. path keys are separate concerns.** In `BREAKERS` and `PUMP_GROUPS`, the strings are used both as display text and as input to `toKey()` to build Signal K paths. Changing the capitalisation or spelling of these strings changes the path and breaks data lookup. To rename something in the UI, use the `toLabel()` helper (applied at render time) rather than editing the raw string in the array. `LIGHT_GROUPS` entries are safe to rename because the `prefix` field is display-only and `toKey()` is called on the base name only.
-- **`toLabel()` is the display transform.** It currently maps `STBD` → `Stbd`. Any further label changes (e.g. renaming `Port` to something else) should go through this function, not by editing the raw names in `BREAKERS` or `PUMP_GROUPS`.
+- **`toLabel()` is the display transform.** It currently maps `STBD` → `Starboard`. Any further label changes (e.g. renaming `Port` to something else) should go through this function, not by editing the raw names in `BREAKERS` or `PUMP_GROUPS`.
 - **`toTitleCase()` is applied at render time** to all breaker names (via `toTitleCase(toLabel(name))`) and all light/pump item labels (inside `renderLightItem`). Do not title-case the raw strings in `BREAKERS`, `LIGHT_GROUPS`, or `PUMP_GROUPS` — those must stay in their original form for path key generation and MQTT matching.
 - **Tank volumes are displayed in US gallons**, not litres. Current fill and total capacity are both derived from the live Signal K data (`levels.L` and `levels.pct`) — total = `L * 100 / pct`. No hardcoded capacities in the render logic.
+- **Tank card functions** both take `(label, subtitle, ...)` signatures: `renderTankCard(label, subtitle, levelPrefix, type)` and `renderTankCardFromValues(label, subtitle, pct, litres, type)`. The `subtitle` (e.g. `'Port'`, `'Starboard'`, `'Average'`) is rendered below the title in smaller muted text. The `type` param selects the icon and fill colour: `'water'` → blue, `'fuel'` → amber, `'black'` → grey.
+- **Inline SVG icon constants** — all icons are 13×13 px strings (`fill="none"`, `stroke="currentColor"`, `stroke-width="1.5"`, `viewBox="0 0 24 24"`). Tank icons are selected by `type` in both render functions. Electrical card icons are embedded directly in the `battery-name` div. Current set:
+  - `WATER_ICON` — water droplet (fresh water tanks)
+  - `TOILET_ICON` — side-view toilet: tank (right), seat bar, U-bowl, pedestal (black water tanks)
+  - `ENGINE_ICON` — engine block: rect body, left bracket prongs, right D-shape, intake cap (diesel tanks)
+  - `BATTERY_ICON` — car battery: landscape rect, two terminal posts, − and + symbols (House Battery card)
+  - `SUN_ICON` — circle with 8 rays (Solar Yield card)
+  - `AC_ICON` — sine wave S-curve (AC Loads card)
+  - `DC_ICON` — two horizontal lines, bottom dashed (DC Loads card)
+- **Icon alignment** — both `.tank-name` and `.battery-name` use `display: (inline-)flex; align-items: center;` with `.tank-name svg, .battery-name svg { margin-right: 0.3rem; flex-shrink: 0; }`. When adding icons to new card titles, follow this CSS pattern rather than inline styles.
 - **AppStore screenshots** are in `screenshots/` and listed in `package.json` under `signalk.screenshots`. The directory is also included in the `files` array so it ships with the npm package.
 
 ## Browser compatibility

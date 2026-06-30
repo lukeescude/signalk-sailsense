@@ -87,6 +87,12 @@ module.exports = function(app) {
   let client = null;
   let activeClientId = null;
   let hubHostname = null;
+  let dashboardConfig = { hiddenBreakers: [] };
+
+  // Registered once in the factory so the route survives plugin stop/start cycles.
+  app.get('/signalk-sailsense/config', function(req, res) {
+    res.json(dashboardConfig);
+  });
 
   const plugin = {
     id: 'signalk-sailsense',
@@ -108,6 +114,23 @@ module.exports = function(app) {
           title: 'MQTT Broker Port',
           default: 1883
         },
+        hiddenBreakers: {
+          type: 'array',
+          title: 'Hidden Breakers',
+          description: 'Breakers to hide in the dashboard — leave empty to show all',
+          uniqueItems: true,
+          default: [],
+          items: {
+            type: 'string',
+            enum: [
+              'Cockpit fridge', 'Electronic', 'Fans', 'Fresh water rinsing pump',
+              'Front Galley Freezer', 'Front Galley Fridge', 'Galley cool box',
+              'Galley sea water pump', 'HIFI', 'Nav table screen Nep 2',
+              'Oven - plate inverter', 'Sea water rinsing pump',
+              'STBD front cabin fridge', 'TAC reading lights', 'TV amplifier',
+            ]
+          }
+        },
         topics: {
           type: 'object',
           title: 'Subscribed Topics',
@@ -128,6 +151,12 @@ module.exports = function(app) {
     },
 
     start(settings) {
+      dashboardConfig = {
+        hiddenBreakers: Array.isArray(settings.hiddenBreakers) ? settings.hiddenBreakers : [],
+        breakerOutputs: Object.fromEntries(
+          Object.entries(BREAKER_MAP).map(([key, val]) => [key, val.outputs])
+        ),
+      };
       const { mqttHost = '192.168.50.231', mqttPort = 1883, topics = {} } = settings;
 
       // Build the active topic list; default to enabled for all except ui_config
