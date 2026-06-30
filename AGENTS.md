@@ -41,17 +41,17 @@ The put handler:
 
 A single-file vanilla JS webapp served by Signal K at `/signalk-sailsense/`. No build step, no framework. Five tabs:
 
-- **Home** — two sections: **Electrical** (House Battery cards, Solar Yield card, Loads card) and **Tanks** (combined fresh water + port/stbd blackwater tiles)
-- **Power** — two sections: **House Batteries** (from `electrical.batteries.*`) above **Engine Batteries** (from `sailsense.batteries.*`); banks discovered dynamically
+- **Home** — at-a-glance dashboard: 2×2 grid of large, high-contrast cards sized to fill a 1040×750 screen with no scrolling (House Bank charge + power, Diesel Tanks, Fresh Water Average, Black Water Tanks). See "Home tab" below.
+- **Power** — two sections: **Batteries** (House Battery cards from `electrical.batteries.*` followed by Port/Stbd Engine Battery cards from `sailsense.batteries.*`, banks discovered dynamically) and **Loads** (Solar Yield, AC Loads, DC Loads cards)
 - **Tanks** — Port/Stbd fill gauges for fresh water, fuel, and blackwater
 - **Breakers** — all 15 breakers with green/red on/off indicators
 - **Lights & Pumps** — nacelle, exterior, and cabin light states; bilge and water pump states
 
 Data flow: WebSocket at `/signalk/v1/stream` (primary, live) with REST polling every 3 s as fallback. The REST poll fetches five endpoints in parallel: `sailsense`, `electrical/batteries`, `electrical/solar`, `electrical/inverters`, and `electrical/venus`. The WebSocket subscribes to all five corresponding path prefixes. Tab state is persisted in the URL hash.
 
-### Electrical cards (Home tab)
+### Electrical cards (Power tab, Loads section)
 
-- **House Battery** — one card per `electrical.batteries.*` bank; labeled "House 1", "House 2", etc. by index. Displays Power (voltage × current, coloured: negative → `var(--red)`, positive → `#60a5fa`) and Current. Battery icon (`BATTERY_ICON`) in card title.
+- **House Battery** — one card per `electrical.batteries.*` bank; labeled "House 1", "House 2", etc. by index. Displays Power (voltage × current, coloured: negative → `var(--red)`, positive → `#60a5fa`) and Current. Battery icon (`BATTERY_ICON`) in card title. Rendered in the Batteries section, not Loads.
 - **Solar Yield** — aggregates `electrical.solar.*.panelPower` (W) and `electrical.solar.*.current` (A) across all controllers. Amber progress bar scaled 0–2500 W. Sun icon (`SUN_ICON`) in card title.
 - **AC Loads** — separate tile; Power/Current from `electrical.inverters.*.acout.power/.current` (summed). Amber progress bar 0–6000 W. AC sine-wave icon (`AC_ICON`) in card title.
 - **DC Loads** — separate tile; DC Power from `electrical.venus.dcPower`; DC Current derived as `dcPower / batteryVoltage`. Amber progress bar 0–6000 W. DC symbol icon (`DC_ICON`) in card title.
@@ -61,6 +61,26 @@ All four electrical cards use a 2-column stat grid with a `% of Limit` utilizati
 ### Engine battery labels (Power tab)
 
 Engine batteries (from `sailsense.batteries.*`) are labeled by inspecting the bank path: if it contains `port` → "Port", `stbd`/`starboard` → "Stbd", otherwise the raw dotted path. Do **not** use positional even/odd indexing — derive from the path.
+
+### Home tab
+
+Four `.home-card` tiles in a `.home-grid` (CSS Grid, 2 columns × 2 rows, `height: calc(100vh - 53px)`) — tuned to fit a 1040×750 screen (the target MFD resolution) without scrolling. `#tab-home` overrides the generic `.panel` padding to 0 so `.home-grid` controls its own spacing.
+
+- **House Bank** — average `capacity.stateOfCharge` across all `electrical.batteries.*` banks (`homeHouseBankSummary()`), huge percentage via `.home-value` (5.5rem), coloured via `socColor()`, with a thick `.home-bar-fill` progress bar. Charge/discharge power (sum of `voltage × current` across house banks) is shown in the same tile via `.home-power-row`, below the bar — `var(--red)` + "Discharging" when negative, `var(--green)` + "Charging" when positive.
+- **Diesel Tanks** — Port and Stbd shown **individually** (not averaged) side by side in a `.home-split` row, from `gazoil_tanks.*.levels`, amber (`#f59e0b`) fill to match `.tank-fill.fuel`.
+- **Fresh Water — Average** — `avgPair()` of Port/Stbd `water_tanks.*.levels.pct`; total gallons from `sumPair()` of the `.levels.L` values via `litresToGal()`.
+- **Black Water Tanks** — Port and Stbd shown **individually** (not averaged) side by side in a `.home-split` row, each with its own `.home-split-value` percentage and gallons — the brief calls for seeing each tank's fill, not a combined number.
+
+`renderHomeSplitTank(label, pct, litres, color)` is the shared renderer for both the Diesel and Black Water split tiles — pass the fill colour in (`#f59e0b` fuel, `#6b7280` black water) rather than forking the function. `avgPair()` / `sumPair()` are the generic two-value null-safe helpers reused here for the fresh water math. Icon size inside `.home-label` is bumped via CSS (`.home-label svg { width: 1.3em; height: 1.3em; }`) rather than changing the shared 13×13 icon constants — keep that pattern when sizing icons up for a specific context.
+
+**Responsive breakpoints** (`@media` queries are scoped per-tab by selector prefix — `.home-*` classes or `#tab-power`/`#tab-tanks` IDs — so each tab's mobile rules can't leak into another tab):
+- `(max-width: 700px), (max-height: 500px)` — covers phones in portrait and landscape.
+  - **Home**: `.home-grid` drops the fixed `height: calc(100vh - 53px)` and switches to `grid-template-columns: 1fr` with `height: auto`, so the tab scrolls instead of trying to cram a 2×2 grid into a short/narrow viewport. Font sizes scale down (`.home-value` 5.5rem → 3.25rem, etc.) but the title-pinned-top / body-vertically-centered structure from `.home-card-body` is unchanged.
+  - **Power / Tanks**: rules are scoped via `#tab-power .battery-group, #tab-tanks .tank-card` etc. (not the bare `.battery-group`/`.tank-card` selectors) so Home is never affected. `.grid`'s `auto-fill, minmax(220px, 1fr)` already collapses to one column on a phone-width screen with no extra rule needed — this breakpoint only tightens `.panel`/`.tank-group`/`.grid` spacing and grows `.stat-value`/`.tank-pct` (1.35rem → 1.6rem) for legibility.
+- `(max-width: 430px)` — narrow phones additionally stack `.home-split` (Port/Stbd) vertically instead of side by side, since two columns get too cramped below ~430px.
+- `(max-width: 460px)` — **Breakers**: `.breaker-grid`'s `minmax(460px, 1fr)` track is wider than any phone viewport, which forces horizontal scroll (`auto-fill` still allocates the 460px minimum even when the container is narrower). Scoped `#tab-breakers .breaker-grid` rule collapses it to `grid-template-columns: 1fr` below this width instead of trying to shrink the 460px minimum.
+
+The desktop/MFD 1040×750 no-scroll layout is the default (unprefixed) ruleset for every tab and must stay pixel-identical — verify with a 1040×750 screenshot after touching any responsive CSS. **Lights & Pumps** has not been given phone breakpoints — its `.light-grid` (`minmax(200px, 1fr)`) already fits phone widths without one, so none was added; revisit if that ever changes.
 
 ## Conventions
 
@@ -76,8 +96,9 @@ Engine batteries (from `sailsense.batteries.*`) are labeled by inspecting the ba
 - **`toLabel()` is the display transform.** It currently maps `STBD` → `Starboard`. Any further label changes (e.g. renaming `Port` to something else) should go through this function, not by editing the raw names in `BREAKERS` or `PUMP_GROUPS`.
 - **`toTitleCase()` is applied at render time** to all breaker names (via `toTitleCase(toLabel(name))`) and all light/pump item labels (inside `renderLightItem`). Do not title-case the raw strings in `BREAKERS`, `LIGHT_GROUPS`, or `PUMP_GROUPS` — those must stay in their original form for path key generation and MQTT matching.
 - **Tank volumes are displayed in US gallons**, not litres. Current fill and total capacity are both derived from the live Signal K data (`levels.L` and `levels.pct`) — total = `L * 100 / pct`. No hardcoded capacities in the render logic.
-- **Tank card functions** both take `(label, subtitle, ...)` signatures: `renderTankCard(label, subtitle, levelPrefix, type)` and `renderTankCardFromValues(label, subtitle, pct, litres, type)`. The `subtitle` (e.g. `'Port'`, `'Starboard'`, `'Average'`) is rendered below the title in smaller muted text. The `type` param selects the icon and fill colour: `'water'` → blue, `'fuel'` → amber, `'black'` → grey.
-- **Inline SVG icon constants** — all icons are 13×13 px strings (`fill="none"`, `stroke="currentColor"`, `stroke-width="1.5"`, `viewBox="0 0 24 24"`). Tank icons are selected by `type` in both render functions. Electrical card icons are embedded directly in the `battery-name` div. Current set:
+- **Tank card function** takes a `(label, subtitle, levelPrefix, type)` signature: `renderTankCard(label, subtitle, levelPrefix, type)`. The `subtitle` (e.g. `'Port'`, `'Starboard'`) is rendered below the title in smaller muted text. The `type` param selects the icon and fill colour: `'water'` → blue, `'fuel'` → amber, `'black'` → grey.
+- **Gallon math is centralised.** `tankCapacityL(litres, pct)` derives a tank's total capacity in litres from its current litres and fill `%` (`litres * 100 / pct`); `litresToGal(l)` converts litres → US gallons; `galLabel(currentGal, totalGal, dp)` formats the `"X / Y gal"` string shown under every tank progress bar (Tanks tab cards and the Home tab's Diesel/Fresh Water/Black Water tiles). Always derive capacity through `tankCapacityL`, never hardcode tank sizes in render logic — `DEVICES.md` documents the physical capacities for reference only.
+- **Inline SVG icon constants** — all icons are 13×13 px strings (`fill="none"`, `stroke="currentColor"`, `stroke-width="1.5"`, `viewBox="0 0 24 24"`). Tank icons are selected by `type` in `renderTankCard`. Electrical card icons are embedded directly in the `battery-name` div. Current set:
   - `WATER_ICON` — water droplet (fresh water tanks)
   - `TOILET_ICON` — side-view toilet: tank (right), seat bar, U-bowl, pedestal (black water tanks)
   - `ENGINE_ICON` — engine block: rect body, left bracket prongs, right D-shape, intake cap (diesel tanks)

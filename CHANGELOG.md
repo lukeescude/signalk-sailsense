@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.3
+
+### Changed
+- **Home tab** redesigned as an at-a-glance dashboard: large, high-contrast tiles for House Bank (charge % plus charge/discharge wattage), Diesel Tanks (Port/Stbd), Fresh Water (Port/Stbd average), and Black Water Tanks (Port/Stbd) — sized to fill a 1040×750 MFD screen with no scrolling
+- **Power tab** batteries consolidated into a single "Batteries" section (House Battery cards followed by Port/Stbd Engine Battery cards, previously two separate sections)
+- **Solar Yield**, **AC Loads**, and **DC Loads** cards moved from the Home tab to a new "Loads" section on the Power tab
+- All tank gallon readouts (Tanks tab and Home tab) now consistently show `current / capacity gal`, with capacity derived from live fill data rather than hardcoded tank sizes
+
+### Added
+- **Mobile/responsive layout** for Home, Power, Tanks, and Breakers tabs — phone-width and short-height viewports get scaled typography, tightened spacing, and single-column stacking, while the MFD 1040×750 layout is unchanged
+
 ## 1.2.2
 
 ### Added

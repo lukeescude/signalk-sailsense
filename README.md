@@ -110,3 +110,8 @@ See [DEVICES.md](./DEVICES.md) for a full map of breakers, lights, pumps, tanks,
 ## License
 
 MIT
+
+## Luke's development cheatsheet
+```aiignore
+npm link /Users/lukeescude/Code/signalk-navico-embedder && npm link /Users/lukeescude/Code/signalk-sailsense && signalk-server
+```

@@ -158,6 +158,99 @@ nav button:hover:not(.active) { color: var(--text); }
 .light-name { font-size: 0.83rem; }
 
 .placeholder { color: var(--muted); font-size: 0.9rem; padding: 3rem 0; text-align: center; }
+
+/* Home */
+#tab-home { padding: 0; }
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 1rem;
+  height: calc(100vh - 53px);
+  min-height: 480px;
+  padding: 1.25rem;
+}
+.home-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.5rem 2rem;
+  display: flex; flex-direction: column; justify-content: flex-start;
+  min-height: 0; min-width: 0;
+}
+.home-label {
+  font-size: 1.1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); margin-bottom: 0.5rem;
+  display: flex; align-items: center;
+}
+.home-label svg { width: 1.3em; height: 1.3em; margin-right: 0.5rem; flex-shrink: 0; }
+.home-card-body { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+.home-value { font-size: 5.5rem; font-weight: 800; line-height: 1; display: flex; align-items: baseline; }
+.home-unit { font-size: 1.8rem; font-weight: 600; color: var(--muted); margin-left: 0.4rem; }
+.home-sub { font-size: 1.15rem; color: var(--muted); margin-top: 0.4rem; min-height: 1.4rem; }
+.home-bar-track { background: var(--bg); border-radius: 10px; height: 22px; overflow: hidden; margin-top: 1.25rem; flex-shrink: 0; }
+.home-bar-fill { height: 100%; border-radius: 10px; transition: width 0.6s ease; }
+
+.home-power-row { display: flex; align-items: center; margin-top: 1.25rem; font-size: 1.7rem; font-weight: 800; }
+.home-power-row svg { width: 1.1em; height: 1.1em; margin-right: 0.5rem; flex-shrink: 0; }
+.home-power-label { font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-left: 0.6rem; opacity: 0.85; }
+
+.home-split { display: flex; align-items: stretch; margin-top: 0.5rem; flex: 1; }
+.home-split-item { flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.home-split-item + .home-split-item { padding-left: 1.5rem; margin-left: 1.5rem; border-left: 1px solid var(--border); }
+.home-split-label { font-size: 1rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.25rem; }
+.home-split-value { font-size: 3rem; font-weight: 800; line-height: 1; display: flex; align-items: baseline; }
+.home-split-value .home-unit { font-size: 1.2rem; }
+
+/* Home — responsive (phones / short viewports). Desktop/MFD layout above stays a fixed-height
+   no-scroll 2x2 grid; below this breakpoint it becomes a single scrollable column instead. */
+@media (max-width: 700px), (max-height: 500px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    height: auto;
+    min-height: 0;
+    padding: 0.85rem;
+    gap: 0.85rem;
+  }
+  .home-card { padding: 1.1rem 1.25rem; }
+  .home-label { font-size: 0.95rem; margin-bottom: 0.35rem; }
+  .home-value { font-size: 3.25rem; }
+  .home-unit { font-size: 1.3rem; }
+  .home-sub { font-size: 1rem; min-height: 0; }
+  .home-bar-track { height: 16px; margin-top: 0.85rem; }
+  .home-power-row { font-size: 1.3rem; margin-top: 0.85rem; }
+  .home-power-label { font-size: 0.85rem; }
+  .home-split-value { font-size: 2.25rem; }
+  .home-split-value .home-unit { font-size: 1rem; }
+}
+
+/* Narrow phones — stack Port/Stbd split tiles instead of squeezing them side by side */
+@media (max-width: 430px) {
+  .home-split { flex-direction: column; gap: 0.85rem; }
+  .home-split-item + .home-split-item {
+    padding-left: 0; margin-left: 0;
+    border-left: none;
+    padding-top: 0.85rem; border-top: 1px solid var(--border);
+  }
+}
+
+/* Power / Tanks — responsive. The auto-fill .grid already stacks to one column on narrow
+   viewports; this just tightens spacing and grows the key numbers for phone legibility. */
+@media (max-width: 700px), (max-height: 500px) {
+  #tab-power, #tab-tanks { padding: 0.85rem; }
+  #tab-power .tank-group, #tab-tanks .tank-group { margin-bottom: 1.25rem; }
+  #tab-power .grid, #tab-tanks .grid { gap: 0.85rem; }
+  #tab-power .battery-group, #tab-tanks .tank-card { padding: 1.1rem 1.25rem; }
+  #tab-power .battery-name, #tab-tanks .tank-name { font-size: 1.05rem; }
+  #tab-power .stat-value, #tab-tanks .tank-pct { font-size: 1.6rem; }
+}
+
+/* Breakers — responsive. .breaker-grid's minmax(460px, 1fr) is wider than a phone screen,
+   which forces horizontal scroll; collapse to a single column below that width instead. */
+@media (max-width: 460px) {
+  #tab-breakers { padding: 0.85rem; }
+  #tab-breakers .breaker-grid { grid-template-columns: 1fr; gap: 0.85rem; }
+  #tab-breakers .breaker { padding: 1.1rem 1.25rem; }
+}
 </style>
 </head>
 <body>
@@ -516,71 +609,127 @@ var BATTERY_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" 
 var SUN_ICON     = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></svg>';
 var AC_ICON      = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12C5 6 9 6 12 12C15 18 19 18 22 12"/></svg>';
 var DC_ICON      = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15" stroke-dasharray="4 2"/></svg>';
+var BOLT_ICON    = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 4 14 12 14 11 22 20 10 12 10 13 2"/></svg>';
 
-function renderTankCardFromValues(label, subtitle, pct, litres, type) {
+function avgPair(a, b) {
+  if (a != null && b != null) return (Number(a) + Number(b)) / 2;
+  if (a != null) return Number(a);
+  if (b != null) return Number(b);
+  return null;
+}
+
+function sumPair(a, b) {
+  if (a != null && b != null) return Number(a) + Number(b);
+  if (a != null) return Number(a);
+  if (b != null) return Number(b);
+  return null;
+}
+
+function litresToGal(l) { return l != null ? Number(l) * 0.264172 : null; }
+
+function tankCapacityL(litres, pct) {
+  return (litres != null && pct != null && Number(pct) > 0) ? Number(litres) * 100 / Number(pct) : null;
+}
+
+function galLabel(currentGal, totalGal, dp) {
+  dp = dp != null ? dp : 1;
+  if (currentGal != null && totalGal != null) return fmt(currentGal, dp) + ' / ' + fmt(totalGal, 0) + ' gal';
+  if (currentGal != null) return fmt(currentGal, dp) + ' gal';
+  return 'No data';
+}
+
+function homeHouseBankSummary() {
+  var banks = getHouseBanks();
+  var socSum = 0, socCount = 0, powerSum = null;
+  for (var id in banks) {
+    var data = banks[id];
+    if (data['capacity.stateOfCharge'] != null) {
+      socSum += Number(data['capacity.stateOfCharge']) * 100;
+      socCount++;
+    }
+    var voltage = data['voltage'] != null ? Number(data['voltage']) : null;
+    var current = data['current'] != null ? Number(data['current']) : null;
+    if (voltage != null && current != null) {
+      powerSum = (powerSum != null ? powerSum : 0) + voltage * current;
+    }
+  }
+  return { soc: socCount > 0 ? socSum / socCount : null, power: powerSum };
+}
+
+function renderHomeSplitTank(label, pct, litres, color) {
   var display = pct != null ? Math.round(Number(pct)) : null;
-  var currentGal = litres != null ? Number(litres) * 0.264172 : null;
-  var totalGal = (litres != null && pct != null && Number(pct) > 0)
-    ? Number(litres) * 100 / Number(pct) * 0.264172 : null;
-  var volLabel = currentGal != null && totalGal != null
-    ? fmt(currentGal, 1) + ' / ' + fmt(totalGal, 0) + ' gal'
-    : currentGal != null ? fmt(currentGal, 1) + ' gal' : 'No data';
-  var icon = type === 'water' ? WATER_ICON : type === 'black' ? TOILET_ICON : type === 'fuel' ? ENGINE_ICON : '';
-  return '<div class="tank-card">'
-    + '<div class="tank-header">'
-    +   '<span class="tank-name">' + icon + label + '</span>'
-    +   '<span class="tank-pct">' + (display != null ? display + '%' : '–') + '</span>'
-    + '</div>'
-    + (subtitle ? '<div class="tank-subtitle">' + subtitle + '</div>' : '')
-    + '<div class="tank-track">'
-    +   '<div class="tank-fill ' + type + '" style="width:' + Math.min(display != null ? display : 0, 100) + '%"></div>'
-    + '</div>'
-    + '<div class="tank-litres">' + volLabel + '</div>'
+  var currentGal = litresToGal(litres);
+  var totalGal = litresToGal(tankCapacityL(litres, pct));
+  return '<div class="home-split-item">'
+    + '<div class="home-split-label">' + label + '</div>'
+    + '<div class="home-split-value">' + (display != null ? display : '–') + (display != null ? '<span class="home-unit">%</span>' : '') + '</div>'
+    + '<div class="home-bar-track"><div class="home-bar-fill" style="width:' + (display != null ? display : 0) + '%;background:' + color + '"></div></div>'
+    + '<div class="home-sub">' + galLabel(currentGal, totalGal) + '</div>'
     + '</div>';
 }
 
 function renderHome() {
   var base = 'sailsense.tanks';
-  var portPct  = state[base + '.water_tanks.water_tank_portside.levels.pct'];
-  var stbdPct  = state[base + '.water_tanks.water_tank_starboard.levels.pct'];
-  var portL    = state[base + '.water_tanks.water_tank_portside.levels.L'];
-  var stbdL    = state[base + '.water_tanks.water_tank_starboard.levels.L'];
 
-  var avgPct = null;
-  if (portPct != null && stbdPct != null) {
-    avgPct = (Number(portPct) + Number(stbdPct)) / 2;
-  } else if (portPct != null) {
-    avgPct = Number(portPct);
-  } else if (stbdPct != null) {
-    avgPct = Number(stbdPct);
-  }
+  var bank = homeHouseBankSummary();
+  var soc = bank.soc != null ? Math.round(bank.soc) : null;
+  var socColorVal = soc != null ? socColor(soc) : '#6b7280';
+  var power = bank.power;
+  var powerColor = power == null ? 'var(--text)' : power < 0 ? 'var(--red)' : 'var(--green)';
+  var powerLabel = power == null ? '' : power < 0 ? 'Discharging' : 'Charging';
 
-  var totalL = null;
-  if (portL != null && stbdL != null) {
-    totalL = Number(portL) + Number(stbdL);
-  } else if (portL != null) {
-    totalL = Number(portL);
-  } else if (stbdL != null) {
-    totalL = Number(stbdL);
-  }
+  var freshPortPct = state[base + '.water_tanks.water_tank_portside.levels.pct'];
+  var freshPortL   = state[base + '.water_tanks.water_tank_portside.levels.L'];
+  var freshStbdPct = state[base + '.water_tanks.water_tank_starboard.levels.pct'];
+  var freshStbdL   = state[base + '.water_tanks.water_tank_starboard.levels.L'];
+  var freshAvgPct = avgPair(freshPortPct, freshStbdPct);
+  var freshCurrentGal = litresToGal(sumPair(freshPortL, freshStbdL));
+  var freshTotalGal = litresToGal(sumPair(
+    tankCapacityL(freshPortL, freshPortPct),
+    tankCapacityL(freshStbdL, freshStbdPct)
+  ));
 
-  var houseBanks = getHouseBanks();
+  var bwPortPct = state[base + '.blackwater_tanks.blackwater_tank_portside.levels.pct'];
+  var bwPortL   = state[base + '.blackwater_tanks.blackwater_tank_portside.levels.L'];
+  var bwStbdPct = state[base + '.blackwater_tanks.blackwater_tank_starboard.levels.pct'];
+  var bwStbdL   = state[base + '.blackwater_tanks.blackwater_tank_starboard.levels.L'];
+
+  var fuelPortPct = state[base + '.gazoil_tanks.gazoil_tank_portside.levels.pct'];
+  var fuelPortL   = state[base + '.gazoil_tanks.gazoil_tank_portside.levels.L'];
+  var fuelStbdPct = state[base + '.gazoil_tanks.gazoil_tank_starboard.levels.pct'];
+  var fuelStbdL   = state[base + '.gazoil_tanks.gazoil_tank_starboard.levels.L'];
 
   document.getElementById('tab-home').innerHTML =
-    '<div class="tank-group">'
-    + '<div class="tank-section-title">Electrical</div>'
-    + '<div class="grid">'
-    + Object.keys(houseBanks).map(function(id, i) { return renderHouseBatteryCard(id, houseBanks[id], i); }).join('')
-    + renderSolarCard()
-    + renderACLoadsCard()
-    + renderDCLoadsCard()
-    + '</div></div>'
-    + '<div class="tank-group">'
-    + '<div class="tank-section-title">Tanks</div>'
-    + '<div class="grid">'
-    +   renderTankCardFromValues('Fresh Water', 'Total', avgPct, totalL, 'water')
-    +   renderTankCard('Black Water', 'Port', base + '.blackwater_tanks.blackwater_tank_portside.levels', 'black')
-    +   renderTankCard('Black Water', 'Starboard', base + '.blackwater_tanks.blackwater_tank_starboard.levels', 'black')
+    '<div class="home-grid">'
+    + '<div class="home-card">'
+    +   '<div class="home-label">' + BATTERY_ICON + 'House Bank</div>'
+    +   '<div class="home-card-body">'
+    +     '<div class="home-value" style="color:' + socColorVal + '">' + (soc != null ? soc : '–') + (soc != null ? '<span class="home-unit">%</span>' : '') + '</div>'
+    +     '<div class="home-bar-track"><div class="home-bar-fill" style="width:' + (soc != null ? soc : 0) + '%;background:' + socColorVal + '"></div></div>'
+    +     '<div class="home-power-row" style="color:' + powerColor + '">' + BOLT_ICON + '<span>' + fmt(power, 0) + ' W</span>' + (powerLabel ? '<span class="home-power-label">' + powerLabel + '</span>' : '') + '</div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="home-card">'
+    +   '<div class="home-label">' + ENGINE_ICON + 'Diesel Tanks</div>'
+    +   '<div class="home-split">'
+    +     renderHomeSplitTank('Port', fuelPortPct, fuelPortL, '#f59e0b')
+    +     renderHomeSplitTank('Starboard', fuelStbdPct, fuelStbdL, '#f59e0b')
+    +   '</div>'
+    + '</div>'
+    + '<div class="home-card">'
+    +   '<div class="home-label">' + WATER_ICON + 'Fresh Water — Average</div>'
+    +   '<div class="home-card-body">'
+    +     '<div class="home-value" style="color:#3b82f6">' + (freshAvgPct != null ? Math.round(freshAvgPct) : '–') + (freshAvgPct != null ? '<span class="home-unit">%</span>' : '') + '</div>'
+    +     '<div class="home-bar-track"><div class="home-bar-fill" style="width:' + (freshAvgPct != null ? freshAvgPct : 0) + '%;background:#3b82f6"></div></div>'
+    +     '<div class="home-sub">' + galLabel(freshCurrentGal, freshTotalGal, 0) + '</div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="home-card">'
+    +   '<div class="home-label">' + TOILET_ICON + 'Black Water Tanks</div>'
+    +   '<div class="home-split">'
+    +     renderHomeSplitTank('Port', bwPortPct, bwPortL, '#6b7280')
+    +     renderHomeSplitTank('Starboard', bwStbdPct, bwStbdL, '#6b7280')
+    +   '</div>'
     + '</div>'
     + '</div>';
 }
@@ -654,25 +803,13 @@ function renderPower() {
     banks[bank][field] = val;
   }
 
-  if (Object.keys(houseBanks).length === 0 && Object.keys(banks).length === 0) {
-    el.innerHTML = '<p class="placeholder">No battery data yet — check plugin connection</p>';
-    return;
-  }
-
   let html = '';
 
-  if (Object.keys(houseBanks).length > 0) {
+  if (Object.keys(houseBanks).length > 0 || Object.keys(banks).length > 0) {
     html += '<div class="tank-group">'
-      + '<div class="tank-section-title">House Batteries</div>'
+      + '<div class="tank-section-title">Batteries</div>'
       + '<div class="grid">'
       + Object.entries(houseBanks).map(([id, data], i) => renderHouseBatteryCard(id, data, i)).join('')
-      + '</div></div>';
-  }
-
-  if (Object.keys(banks).length > 0) {
-    html += '<div class="tank-group">'
-      + '<div class="tank-section-title">Engine Batteries</div>'
-      + '<div class="grid">'
       + Object.entries(banks).map(([bank, data]) => {
           const pct = data.percentage != null ? Math.round(Number(data.percentage)) : null;
           const color = pct != null ? socColor(pct) : '#6b7280';
@@ -711,6 +848,14 @@ function renderPower() {
       + '</div></div>';
   }
 
+  html += '<div class="tank-group">'
+    + '<div class="tank-section-title">Loads</div>'
+    + '<div class="grid">'
+    + renderSolarCard()
+    + renderACLoadsCard()
+    + renderDCLoadsCard()
+    + '</div></div>';
+
   el.innerHTML = html;
 }
 
@@ -720,12 +865,9 @@ function renderTankCard(label, subtitle, levelPrefix, type) {
   const pct    = state[levelPrefix + '.pct'];
   const litres = state[levelPrefix + '.L'];
   const display = pct != null ? Math.round(Number(pct)) : null;
-  const currentGal = litres != null ? Number(litres) * 0.264172 : null;
-  const totalGal   = (litres != null && pct != null && Number(pct) > 0)
-    ? Number(litres) * 100 / Number(pct) * 0.264172 : null;
-  const volLabel = currentGal != null && totalGal != null
-    ? fmt(currentGal, 1) + ' / ' + fmt(totalGal, 0) + ' gal'
-    : currentGal != null ? fmt(currentGal, 1) + ' gal' : 'No data';
+  const currentGal = litresToGal(litres);
+  const totalGal = litresToGal(tankCapacityL(litres, pct));
+  const volLabel = galLabel(currentGal, totalGal);
   const icon = type === 'water' ? WATER_ICON : type === 'black' ? TOILET_ICON : type === 'fuel' ? ENGINE_ICON : '';
   return `<div class="tank-card">
     <div class="tank-header">
