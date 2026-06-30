@@ -82,6 +82,47 @@ const BREAKER_MAP = {
   TV_amplifier:             { name: 'TV amplifier',             outputs: [{ nPow: 1, output: 21 }] },
 };
 
+// Hardware address lookup for lights/pumps, namespaced by Signal K action group (mirrors
+// BREAKER_MAP). Keys are toKey()'d names exactly as the webapp builds them, e.g.
+// sailsense.actions.port_lights.reading_light.state — see DEVICES.md for the source tables.
+const ACTION_MAP = {
+  exterior_light: {
+    Submarine_light:         { name: 'Submarine light',         outputs: [{ nPow: 1, output: 1 }] },
+    Foredeck_courtesy_light: { name: 'Foredeck courtesy light', outputs: [{ nPow: 1, output: 3 }, { nPow: 2, output: 3 }] },
+    Under_bridge_deck_light: { name: 'Under bridge deck light', outputs: [{ nPow: 1, output: 14 }] },
+    Cockpit_courtesy_light:  { name: 'Cockpit courtesy light',  outputs: [{ nPow: 2, output: 4 }] },
+    Spreader_light:          { name: 'Spreader light',          outputs: [{ nPow: 2, output: 10 }] },
+  },
+  nacelle_lights: {
+    Saloon_light:          { name: 'Saloon light',          outputs: [{ nPow: 1, output: 11 }] },
+    Saloon_indirect_light: { name: 'Saloon indirect light', outputs: [{ nPow: 1, output: 18 }] },
+    Cockpit_light:         { name: 'Cockpit light',         outputs: [{ nPow: 1, output: 10 }] },
+  },
+  port_lights: {
+    reading_light:     { name: 'reading light',     outputs: [{ nPow: 1, output: 5 }] },
+    rear_cabin_light:  { name: 'rear cabin light',  outputs: [{ nPow: 1, output: 6 }] },
+    corridor_light:    { name: 'corridor light',    outputs: [{ nPow: 1, output: 8 }] },
+    front_cabin_light: { name: 'front cabin light', outputs: [{ nPow: 1, output: 9 }] },
+  },
+  stbd_lights: {
+    reading_light:     { name: 'reading light',     outputs: [{ nPow: 2, output: 5 }] },
+    rear_cabin_light:  { name: 'rear cabin light',  outputs: [{ nPow: 2, output: 7 }] },
+    corridor_light:    { name: 'corridor light',    outputs: [{ nPow: 2, output: 8 }] },
+    front_cabin_light: { name: 'front cabin light', outputs: [{ nPow: 2, output: 9 }] },
+  },
+  bilge_pumps: {
+    Port_engine_bilge_pump: { name: 'Port engine bilge pump', outputs: [{ nPow: 1, output: 15 }] },
+    Port_hull_bilge_pump:   { name: 'Port hull bilge pump',   outputs: [{ nPow: 1, output: 16 }] },
+    STBD_engine_bilge_pump: { name: 'STBD engine bilge pump', outputs: [{ nPow: 2, output: 14 }] },
+    STBD_hull_bilge_pump:   { name: 'STBD hull bilge pump',   outputs: [{ nPow: 2, output: 15 }] },
+  },
+  water_pump: {
+    Fresh_water_pump:     { name: 'Fresh water pump',     outputs: [{ nPow: 1, output: 24 }] },
+    Port_grey_water_pump: { name: 'Port grey water pump', outputs: [{ nPow: 1, output: 20 }] },
+    STBD_grey_water_pump: { name: 'STBD grey water pump', outputs: [{ nPow: 2, output: 20 }] },
+  },
+};
+
 // Exported for testing
 module.exports = function(app) {
   let client = null;
@@ -171,25 +212,39 @@ module.exports = function(app) {
 
       activeClientId = 'signalk-sailsense-' + Math.random().toString(16).slice(2, 10);
 
+      // Shared by breaker and action (light/pump) put handlers — builds the {nPow, output}
+      // or multi-output {children} command payload and publishes it to the Hub.
+      const publishToggle = (entry, mqttTopic, value, done) => {
+        if (!client) return done({ state: 'COMPLETED' });
+        const cmdState = value ? 'on' : 'off';
+        let payload;
+        if (entry.outputs.length === 1) {
+          payload = { nPow: entry.outputs[0].nPow, output: entry.outputs[0].output, state: cmdState, topic: mqttTopic };
+        } else {
+          payload = { children: entry.outputs.map(o => ({ nPow: o.nPow, output: o.output })), state: cmdState, topic: mqttTopic };
+        }
+        if (!hubHostname) return done({ state: 'COMPLETED' });
+        client.publish(`cmd/${hubHostname}/send`, JSON.stringify(payload), { qos: 1, retain: false });
+        done({ state: 'COMPLETED' });
+      };
+
       if (typeof app.registerPutHandler === 'function') {
         Object.keys(BREAKER_MAP).forEach(key => {
+          const breaker = BREAKER_MAP[key];
+          const mqttTopic = `breakers/children/${breaker.name}/children/${breaker.name}`;
           app.registerPutHandler('vessels.self', `sailsense.breakers.${key}.state`,
-            (ctx, path, value, done) => {
-              if (!client) return done({ state: 'COMPLETED' });
-              const breaker = BREAKER_MAP[key];
-              const cmdState = value ? 'on' : 'off';
-              const mqttTopic = `breakers/children/${breaker.name}/children/${breaker.name}`;
-              let payload;
-              if (breaker.outputs.length === 1) {
-                payload = { nPow: breaker.outputs[0].nPow, output: breaker.outputs[0].output, state: cmdState, topic: mqttTopic };
-              } else {
-                payload = { children: breaker.outputs.map(o => ({ nPow: o.nPow, output: o.output })), state: cmdState, topic: mqttTopic };
-              }
-              if (!hubHostname) return done({ state: 'COMPLETED' });
-              client.publish(`cmd/${hubHostname}/send`, JSON.stringify(payload), { qos: 1, retain: false });
-              done({ state: 'COMPLETED' });
-            }
+            (ctx, path, value, done) => publishToggle(breaker, mqttTopic, value, done)
           );
+        });
+
+        Object.entries(ACTION_MAP).forEach(([group, actions]) => {
+          Object.keys(actions).forEach(key => {
+            const action = actions[key];
+            const mqttTopic = `actions/children/${group}/children/${action.name}`;
+            app.registerPutHandler('vessels.self', `sailsense.actions.${group}.${key}.state`,
+              (ctx, path, value, done) => publishToggle(action, mqttTopic, value, done)
+            );
+          });
         });
       }
 

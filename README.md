@@ -15,7 +15,7 @@ npm install signalk-sailsense
 ```
 
 Then restart your Signal K server and enable the plugin under **Server → Plugin Config → SailSense Hub**.
-
+ 
 ## Configuration
 
 | Field | Default | Description |

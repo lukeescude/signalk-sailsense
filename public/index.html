@@ -35,7 +35,7 @@ header h1 { font-size: 1.05rem; font-weight: 600; }
   align-items: center;
   padding: 0 1.25rem;
   flex-shrink: 0;
-  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
 }
 #status-dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -54,7 +54,7 @@ nav button {
   background: none; border: none;
   border-bottom: 3px solid transparent;
   color: var(--muted); cursor: pointer;
-  font-size: 0.9rem; font-family: inherit;
+  font-size: 1rem; font-family: inherit;
   padding: 1rem 1.25rem;
   white-space: nowrap;
   transition: color 0.15s, border-color 0.15s;
@@ -143,19 +143,27 @@ nav button:hover:not(.active) { color: var(--text); }
   color: var(--muted); margin-bottom: 0.6rem;
   padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
 }
-.light-grid { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.light-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 .light-item {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 6px; padding: 0.6rem 0.875rem;
-  display: flex; align-items: center;
+  border-radius: 8px; padding: 1.1rem 1.25rem;
+  display: flex; align-items: center; width: 100%;
+  cursor: pointer; transition: border-color 0.15s;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none; appearance: none;
+  font-family: inherit; font-size: inherit; color: inherit;
+  text-align: left;
 }
+.light-item:hover, .light-item:active { border-color: var(--accent); }
 .light-dot {
-  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-  margin-right: 0.6rem;
+  width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+  margin-right: 0.85rem;
   background: #374151; transition: background 0.3s, box-shadow 0.3s;
 }
 .light-dot.on { background: #fbbf24; box-shadow: 0 0 7px #fbbf24; }
-.light-name { font-size: 0.83rem; }
+.light-name { font-size: 1rem; }
 
 .placeholder { color: var(--muted); font-size: 0.9rem; padding: 3rem 0; text-align: center; }
 
@@ -256,6 +264,10 @@ nav button:hover:not(.active) { color: var(--text); }
 <body>
 
 <header>
+  <div id="vessel-brand">
+    <div id="status-dot"></div>
+    <h1 id="vessel-name">SailSense Hub</h1>
+  </div>
   <nav>
     <button class="active" data-tab="home">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
@@ -278,10 +290,6 @@ nav button:hover:not(.active) { color: var(--text); }
       Lights &amp; Pumps
     </button>
   </nav>
-  <div id="vessel-brand">
-    <div id="status-dot"></div>
-    <h1 id="vessel-name">SailSense Hub</h1>
-  </div>
 </header>
 
 <div id="tab-home"     class="panel active"></div>
@@ -307,11 +315,14 @@ const BREAKERS = [
   'STBD front cabin fridge', 'TAC reading lights', 'TV amplifier',
 ];
 
+// `section` controls which top-level Lights & Pumps tab header a group's items render under
+// (Exterior Lights / Interior Lights); it's purely a display grouping, independent of the
+// underlying `group` (Signal K action group) each entry maps to.
 const LIGHT_GROUPS = [
-  { title: 'Nacelle Lights',      group: 'nacelle_lights',  names: ['Saloon light', 'Saloon indirect light', 'Cockpit light'] },
-  { title: 'Exterior Lights',     group: 'exterior_light',  names: ['Submarine light', 'Foredeck courtesy light', 'Under bridge deck light', 'Cockpit courtesy light', 'Spreader light'] },
-  { title: 'Port Cabin Lights',   group: 'port_lights',     names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Port ' },
-  { title: 'Starboard Cabin Lights', group: 'stbd_lights',  names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Starboard ' },
+  { section: 'Exterior Lights', group: 'exterior_light',  names: ['Submarine light', 'Foredeck courtesy light', 'Under bridge deck light', 'Cockpit courtesy light', 'Spreader light'] },
+  { section: 'Interior Lights', group: 'nacelle_lights',  names: ['Saloon light', 'Saloon indirect light', 'Cockpit light'] },
+  { section: 'Interior Lights', group: 'port_lights',     names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Port ' },
+  { section: 'Interior Lights', group: 'stbd_lights',     names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Starboard ' },
 ];
 
 const PUMP_GROUPS = [
@@ -348,6 +359,12 @@ function toKey(name) {
 }
 
 function toLabel(name) {
+  if (name === 'HIFI') return 'Sound System';
+  if (name === 'Electronic') return 'Instruments';
+  if (name === 'Nav table screen Nep 2') return 'Nav Station';
+  if (name === 'TAC reading lights') return 'Reading Lights';
+  if (name === 'Oven - plate inverter') return '240v Galley Inverter';
+  if (name === 'Submarine light') return 'Underwater';
   return name.replace(/STBD/g, 'Starboard');
 }
 
@@ -975,23 +992,45 @@ function renderBreakers() {
 
 // ─── Lights & Pumps tab ───────────────────────────────────────────────────────
 
-function renderLightItem(label, path) {
-  const val = state[path];
-  const on  = isOn(val);
-  return `<div class="light-item">
-    <div class="light-dot ${on ? 'on' : ''}"></div>
-    <span class="light-name">${toTitleCase(label)}</span>
-  </div>`;
+// Section headers already say "Lights"/"Pumps", so drop the redundant trailing word.
+function lightDisplayLabel(label) {
+  return toTitleCase(label.replace(/\s+(light|pump)$/i, ''));
 }
 
-function renderLights() {
-  let html = '';
+function buildActionTile(label, group, key) {
+  return `<button type="button" class="light-item" data-group="${group}" data-key="${key}">
+    <div class="light-dot"></div>
+    <span class="light-name">${label}</span>
+  </button>`;
+}
 
-  for (const { title, group, names, prefix = '' } of LIGHT_GROUPS) {
+function bindActionTile(tile) {
+  tile.addEventListener('click', function() {
+    var group = tile.dataset.group;
+    var key = tile.dataset.key;
+    var path = 'sailsense.actions.' + group + '.' + key + '.state';
+    var newVal = !isOn(state[path]);
+    // Optimistic update, same pattern as bindBreakerTile.
+    state[path] = newVal ? 'on' : 'off';
+    tile.querySelector('.light-dot').className = 'light-dot' + (newVal ? ' on' : '');
+    toggleAction(group, key, newVal);
+  });
+}
+
+function initLights() {
+  var container = document.getElementById('tab-lights');
+  var html = '';
+
+  for (const section of ['Exterior Lights', 'Interior Lights']) {
+    let items = '';
+    for (const { section: s, group, names, prefix = '' } of LIGHT_GROUPS) {
+      if (s !== section) continue;
+      items += names.map(n => buildActionTile(lightDisplayLabel(prefix + toLabel(n)), group, toKey(n))).join('');
+    }
     html += `<div class="light-section">
-      <div class="light-section-title">${title}</div>
+      <div class="light-section-title">${section}</div>
       <div class="light-grid">
-        ${names.map(n => renderLightItem(prefix + n, `sailsense.actions.${group}.${toKey(n)}.state`)).join('')}
+        ${items}
       </div>
     </div>`;
   }
@@ -1000,12 +1039,24 @@ function renderLights() {
     html += `<div class="light-section">
       <div class="light-section-title">${title}</div>
       <div class="light-grid">
-        ${names.map(n => renderLightItem(toLabel(n), `sailsense.actions.${group}.${toKey(n)}.state`)).join('')}
+        ${names.map(n => buildActionTile(lightDisplayLabel(toLabel(n)), group, toKey(n))).join('')}
       </div>
     </div>`;
   }
 
-  document.getElementById('tab-lights').innerHTML = html;
+  container.innerHTML = html;
+  var tiles = container.querySelectorAll('.light-item');
+  for (var i = 0; i < tiles.length; i++) { bindActionTile(tiles[i]); }
+}
+
+function renderLights() {
+  var tiles = document.querySelectorAll('.light-item');
+  for (var i = 0; i < tiles.length; i++) {
+    var tile = tiles[i];
+    var path = 'sailsense.actions.' + tile.dataset.group + '.' + tile.dataset.key + '.state';
+    var on = isOn(state[path]);
+    tile.querySelector('.light-dot').className = 'light-dot' + (on ? ' on' : '');
+  }
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
@@ -1016,10 +1067,10 @@ if (document.getElementById('tab-' + initialTab)) activateTab(initialTab);
 
 // ─── SK login overlay ────────────────────────────────────────────────────────
 
-var pendingPut = null; // {key, value} saved while the login overlay is open
+var pendingPut = null; // {skPath, value} saved while the login overlay is open
 
-function showLoginOverlay(key, value) {
-  pendingPut = { key: key, value: value };
+function showLoginOverlay(skPath, value) {
+  pendingPut = { skPath: skPath, value: value };
   var ov = document.getElementById('sk-login-overlay');
   if (!ov) {
     ov = document.createElement('div');
@@ -1036,7 +1087,7 @@ function showLoginOverlay(key, value) {
       'padding:1.5rem;width:300px;max-width:90vw;">' +
         '<div style="font-weight:600;font-size:1rem;margin-bottom:0.4rem;">Signal K Login</div>' +
         '<div style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">' +
-          'Enter your Signal K credentials to enable breaker control.' +
+          'Enter your Signal K credentials to enable breaker, light, and pump control.' +
         '</div>' +
         '<input id="sk-user" type="text" placeholder="Username" autocomplete="username" style="' + inputStyle + '">' +
         '<input id="sk-pass" type="password" placeholder="Password" autocomplete="current-password" style="' + inputStyle + '">' +
@@ -1091,7 +1142,7 @@ function doSkLogin() {
       if (ov) ov.style.display = 'none';
       var p = pendingPut;
       pendingPut = null;
-      if (p) toggleBreaker(p.key, p.value);
+      if (p) putState(p.skPath, p.value);
     } else {
       var msg = (result.body && result.body.message) ? result.body.message : 'Login failed';
       errEl.textContent = msg;
@@ -1103,11 +1154,13 @@ function doSkLogin() {
   });
 }
 
-function toggleBreaker(key, newValue) {
+// Shared by breaker and light/pump toggles. skPath is relative to vessels/self,
+// e.g. "sailsense/breakers/Fans/state" or "sailsense/actions/bilge_pumps/Port_hull_bilge_pump/state".
+function putState(skPath, newValue) {
   // Use the freshest available token: one from login session takes priority over the
   // static embedder token, so a re-login after a 401 immediately takes effect.
   var token = sessionToken || SK_TOKEN;
-  var url = '/signalk/v1/api/vessels/self/sailsense/breakers/' + key + '/state';
+  var url = '/signalk/v1/api/vessels/self/' + skPath;
   if (token) url += '?token=' + encodeURIComponent(token);
   var headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = 'Bearer ' + token;
@@ -1121,9 +1174,17 @@ function toggleBreaker(key, newValue) {
       // Clear any stored token — it's invalid — and prompt for credentials.
       sessionToken = null;
       try { sessionStorage.removeItem('sk-auth-token'); } catch(e) {}
-      showLoginOverlay(key, newValue);
+      showLoginOverlay(skPath, newValue);
     }
   }).catch(function() {});
+}
+
+function toggleBreaker(key, newValue) {
+  putState('sailsense/breakers/' + key + '/state', newValue);
+}
+
+function toggleAction(group, key, newValue) {
+  putState('sailsense/actions/' + group + '/' + key + '/state', newValue);
 }
 
 fetchVesselName();
@@ -1132,6 +1193,7 @@ setInterval(fetchAll, POLL_MS);
 connectWS();
 fetchConfig().then(function() {
   initBreakers();
+  initLights();
   render();
 });
 </script>

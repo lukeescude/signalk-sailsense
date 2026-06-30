@@ -24,18 +24,20 @@ Key plugin-scope closure variables in `start()`:
 - `activeClientId` — the plugin's own random MQTT client ID (used only as the connection's `clientId` option, not for command routing)
 - `hubHostname` — the Hub's own MQTT hostname, read from the retained `about/hostname` topic at connection time (e.g. `H0201DUGW`); this is the target for all control commands
 
-### Breaker write control
+### Breaker, light, and pump write control
 
-Breaker tiles are interactive. Clicking a tile in the dashboard sends a Signal K PUT to `/signalk/v1/api/vessels/self/sailsense/breakers/{key}/state`, which the plugin handles via `app.registerPutHandler`.
+Breaker tiles **and** Lights & Pumps tiles are both interactive, sharing the same control architecture. Clicking a breaker tile PUTs to `/signalk/v1/api/vessels/self/sailsense/breakers/{key}/state`; clicking a light/pump tile PUTs to `/signalk/v1/api/vessels/self/sailsense/actions/{group}/{key}/state`. Both are handled via `app.registerPutHandler`.
 
-The put handler:
-1. Looks up the breaker's hardware address in `BREAKER_MAP` (a module-level constant)
-2. Builds the MQTT command payload (single output or `children` array for multi-rail)
+Each put handler:
+1. Looks up the device's hardware address — `BREAKER_MAP` for breakers, `ACTION_MAP[group]` for lights/pumps (both module-level constants in `index.js`)
+2. Builds the MQTT command payload via the shared `publishToggle(entry, mqttTopic, value, done)` helper (single output, or a `children` array for multi-rail devices like Fans or Foredeck courtesy light)
 3. Publishes to `cmd/{hubHostname}/send` — **the Hub's hostname, not the plugin's client ID**
 
-`BREAKER_MAP` key format matches `toKey(breakerName)` exactly (spaces → `_`, hyphens preserved). The `name` field holds the original name for use in the MQTT `topic` field of the command payload.
+`BREAKER_MAP`/`ACTION_MAP` key format matches `toKey(name)` exactly (spaces → `_`, hyphens preserved). The `name` field on each entry holds the original name for use in the MQTT `topic` field of the command payload. `ACTION_MAP` is namespaced by Signal K action group (`exterior_light`, `nacelle_lights`, `port_lights`, `stbd_lights`, `bilge_pumps`, `water_pump`) since the same base name (e.g. `reading_light`) is reused across `port_lights`/`stbd_lights` with different hardware addresses. The command `topic` field differs slightly by category: breakers repeat the name twice (`breakers/children/{Name}/children/{Name}`), actions use it once (`actions/children/{group}/children/{name}`) — see `DEVICES.md` Command Reference.
 
 **Critical:** The command topic is `cmd/{hubHostname}/send` where `hubHostname` comes from the `about/hostname` retained MQTT message. Using the plugin's own random client ID as the target (as DEVICES.md originally implied) will silently fail — the Hub never subscribed to that topic. The hub's hostname is subscribed to alongside the normal topic groups at `client.on('connect')` time.
+
+The webapp generalizes this with a single `putState(skPath, value)` function (and shared `pendingPut`/401-login-overlay retry flow) used by both `toggleBreaker(key, value)` and `toggleAction(group, key, value)`. Like breakers, Lights & Pumps tiles are built once by `initLights()` (called at boot alongside `initBreakers()`) with click handlers bound to stable DOM nodes; `renderLights()` only updates `.light-dot` classes on each render cycle — do not rebuild tile `innerHTML` on every render, or click bindings would need constant rebinding and tapping could hit a stale node mid-rebuild.
 
 ### Dashboard webapp (`public/index.html`)
 
@@ -45,7 +47,7 @@ A single-file vanilla JS webapp served by Signal K at `/signalk-sailsense/`. No 
 - **Power** — two sections: **Batteries** (House Battery cards from `electrical.batteries.*` followed by Port/Stbd Engine Battery cards from `sailsense.batteries.*`, banks discovered dynamically) and **Loads** (Solar Yield, AC Loads, DC Loads cards)
 - **Tanks** — Port/Stbd fill gauges for fresh water, fuel, and blackwater
 - **Breakers** — all 15 breakers with green/red on/off indicators
-- **Lights & Pumps** — nacelle, exterior, and cabin light states; bilge and water pump states
+- **Lights & Pumps** — four sections: Exterior Lights, Interior Lights (nacelle + port/stbd cabin lights merged under one display heading), Bilge Pumps, Water Pumps
 
 Data flow: WebSocket at `/signalk/v1/stream` (primary, live) with REST polling every 3 s as fallback. The REST poll fetches five endpoints in parallel: `sailsense`, `electrical/batteries`, `electrical/solar`, `electrical/inverters`, and `electrical/venus`. The WebSocket subscribes to all five corresponding path prefixes. Tab state is persisted in the URL hash.
 
@@ -92,7 +94,8 @@ The desktop/MFD 1040×750 no-scroll layout is the default (unprefixed) ruleset f
 - **`isLiveData` is intentionally conservative.** It exists to suppress high-volume metadata noise. When in doubt, keep it strict.
 - **Webapp path reads:** always read breaker state from `sailsense.breakers.{Name}.state` — the deeper `sailsense.breakers.{Name}.{Name}.state` path exists as a retained MQTT value but does not reflect live state.
 - **`topicToPath` sanitisation** must be mirrored exactly in the webapp's `toKey()` function: `%` → `pct`, all non-`[a-zA-Z0-9_-]` characters → `_`.
-- **Display labels vs. path keys are separate concerns.** In `BREAKERS` and `PUMP_GROUPS`, the strings are used both as display text and as input to `toKey()` to build Signal K paths. Changing the capitalisation or spelling of these strings changes the path and breaks data lookup. To rename something in the UI, use the `toLabel()` helper (applied at render time) rather than editing the raw string in the array. `LIGHT_GROUPS` entries are safe to rename because the `prefix` field is display-only and `toKey()` is called on the base name only.
+- **Display labels vs. path keys are separate concerns.** In `BREAKERS`, `LIGHT_GROUPS`, and `PUMP_GROUPS`, the name strings are used both as display text and as input to `toKey()` to build Signal K paths. Changing the capitalisation or spelling of these strings changes the path and breaks data lookup. To rename something in the UI, use the `toLabel()` helper (applied at render time) rather than editing the raw string in the array — `renderLights()` calls `toLabel(n)` on every `LIGHT_GROUPS`/`PUMP_GROUPS` base name before display, same as breakers. The `prefix` field on `LIGHT_GROUPS` entries (e.g. `'Port '`) is the one piece that *is* safe to edit directly — it's display-only and `toKey()` is called on the base name `n` alone, never on `prefix + n`.
+- **`LIGHT_GROUPS`' `section` field is a separate display-grouping concern from `group`.** `section` controls which Lights & Pumps tab heading (Exterior Lights / Interior Lights) a `LIGHT_GROUPS` entry's items render under; `group` is the underlying Signal K action group used to build the path and is independent of how items are visually grouped. Multiple `LIGHT_GROUPS` entries can share a `section` (e.g. nacelle + port + starboard cabin lights all render under "Interior Lights") without merging their underlying `group`/path data.
 - **`toLabel()` is the display transform.** It currently maps `STBD` → `Starboard`. Any further label changes (e.g. renaming `Port` to something else) should go through this function, not by editing the raw names in `BREAKERS` or `PUMP_GROUPS`.
 - **`toTitleCase()` is applied at render time** to all breaker names (via `toTitleCase(toLabel(name))`) and all light/pump item labels (inside `renderLightItem`). Do not title-case the raw strings in `BREAKERS`, `LIGHT_GROUPS`, or `PUMP_GROUPS` — those must stay in their original form for path key generation and MQTT matching.
 - **Tank volumes are displayed in US gallons**, not litres. Current fill and total capacity are both derived from the live Signal K data (`levels.L` and `levels.pct`) — total = `L * 100 / pct`. No hardcoded capacities in the render logic.
