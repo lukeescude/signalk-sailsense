@@ -29,10 +29,15 @@
   "signalk": {
     "displayName": "SailSense Hub",
     "appIcon": "icon.png",
+    "recommends": [
+      "signalk-navico-embedder"
+    ],
     "screenshots": [
-      "./screenshots/screenshot_breakers.png",
-      "./screenshots/screenshot_lights_pumps.png",
-      "./screenshots/screenshot_tanks.png",
+      "./screenshots/home.png",
+      "./screenshots/power.png",
+      "./screenshots/breakers.png",
+      "./screenshots/tanks.png",
+      "./screenshots/lights.png",
       "./screenshots/mobile_1.png",
       "./screenshots/mobile_2.png"
     ]

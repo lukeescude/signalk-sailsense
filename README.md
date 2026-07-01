@@ -113,5 +113,5 @@ MIT
 
 ## Luke's development cheatsheet
 ```aiignore
-npm link /Users/lukeescude/Code/signalk-navico-embedder && npm link /Users/lukeescude/Code/signalk-sailsense && signalk-server
+npm link /Users/lukeescude/Code/signalk-navico-embedder /Users/lukeescude/Code/signalk-sailsense && signalk-server
 ```
