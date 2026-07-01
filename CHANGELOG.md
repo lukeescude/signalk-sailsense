@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.0
+
+### Added
+- **Lights & Pumps tab is now interactive** — tiles can be tapped to toggle lights and pumps on/off, matching the Breakers tab's control model and touch-target sizing (previously read-only status indicators)
+- **Dimming control** for the three dimmable nacelle lights (Saloon, Saloon Indirect, Cockpit): a 6-segment brightness bar (15/25/35/45/55/100%) alongside the existing on/off toggle
+- **Four "shortcut" exterior lights** added to the Lights & Pumps tab — Navigation, Steaming, Anchor, Deck — previously missing because they live under a separate SailSense Hub subsystem (`contents/action_shortcut`) rather than the regular actions/breakers topics
+
+### Changed
+- Vessel name and WebSocket status indicator moved to the left of the navigation tabs (previously right-aligned)
+- Navigation tab label text size increased slightly for readability
+- **Lights & Pumps reorganized** into four sections — Exterior Lights, Interior Lights, Bilge Pumps, Water Pumps — replacing the previous five sections split by physical location (Nacelle/Exterior/Port Cabin/Starboard Cabin Lights)
+- Redundant "Light"/"Pump" suffix dropped from individual item labels on the Lights & Pumps tab, since each section's heading already conveys it
+- Breaker labels renamed for clarity: "HIFI" → "Sound System", "Electronic" → "Instruments", "Nav table screen Nep 2" → "Nav Station", "TAC reading lights" → "Reading Lights", "Oven - plate inverter" → "240v Galley Inverter"
+- "Submarine" light renamed to "Underwater" on the Lights & Pumps tab
+
+### Fixed
+- Corrected an off-by-one in the dimmer step command: the Hub's `dimmer_step` convention is 1-indexed ("Level 1-6"), not the 0-indexed array index the reference docs implied — the two lowest brightness levels previously had no visible effect
+
 ## 1.2.3
 
 ### Changed

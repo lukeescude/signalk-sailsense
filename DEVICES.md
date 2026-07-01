@@ -26,6 +26,8 @@ Step index maps into the brightness table `[15, 25, 35, 45, 55, 100]` (%).
 | 4 | 55% |
 | 5 | 100% |
 
+This table is 0-indexed (array position). **The command's `step` field is not** — see the "Set dimmer" caveat under Command Reference below before sending a command.
+
 ---
 
 ## Toggle Lights
@@ -82,6 +84,28 @@ Controlled via `toggleLight(name, state)` or a raw `cmd/{clientId}/send` publish
 | Fresh water pump | 1 | 24 | `actions/children/water_pump/children/Fresh water pump` |
 | Port grey water pump | 1 | 20 | `actions/children/water_pump/children/Port grey water pump` |
 | STBD grey water pump | 2 | 20 | `actions/children/water_pump/children/STBD grey water pump` |
+
+---
+
+## Shortcuts
+
+Four more exterior lights live under a separate Hub subsystem, `contents/action_shortcut`, not `actions/children/exterior_light` — the Powernet Outputs table below lists these with a "(shortcut)" annotation. Live state topic is `contents/action_shortcut/children/{name}/state`; retained address is at `contents/action_shortcut/children/{name}/cmd`.
+
+**Confirmed live** (verified by direct `mosquitto_pub`/`mosquitto_sub` against the real Hub — toggled the deck light on then back off): unlike `actions/...`, the command `topic` field repeats the name twice, same as breakers: `contents/action_shortcut/children/{name}/children/{name}`.
+
+| Name | Hub's internal name | Rail | Output | MQTT Topic |
+|---|---|---|---|---|
+| Navigation | `navigation_light` | 1+2 | 4+6 | `contents/action_shortcut/children/navigation_light` |
+| Steaming | `engine_light` | 2 | 2 | `contents/action_shortcut/children/engine_light` |
+| Anchor | `anchor_light` | 2 | 1 | `contents/action_shortcut/children/anchor_light` |
+| Deck | `deck_light` | 2 | 12 | `contents/action_shortcut/children/deck_light` |
+
+**Example command** (Deck light on):
+```json
+{ "nPow": 2, "output": 12, "state": "on", "topic": "contents/action_shortcut/children/deck_light/children/deck_light" }
+```
+
+**Naming note:** the Hub's own name for the Steaming light is `engine_light` — this is a steaming light, not an engine-room light. Display it as "Steaming" in any UI.
 
 ---
 
@@ -272,10 +296,12 @@ Retain:  false
 { "nPow": 1, "output": 11, "state": "on", "topic": "actions/children/nacelle_lights/children/Saloon light" }
 ```
 
-**Set dimmer (step 0–5):**
+**Set dimmer (step 1–6, not 0–5 — see caveat below):**
 ```json
-{ "nPow": 1, "output": 11, "step": 3, "topic": "actions/children/nacelle_lights/children/Saloon light" }
+{ "nPow": 1, "output": 11, "step": 4, "topic": "actions/children/nacelle_lights/children/Saloon light" }
 ```
+
+**Caveat, confirmed empirically:** the `step` field in this command is **1-indexed** ("Level 1" through "Level 6"), matching the Hub's own `dimmer_step` status topic — it is *not* a direct 0-based index into the `dimmer_table`/brightness array `[15, 25, 35, 45, 55, 100]` despite the array being 0-indexed. Sending `step: 0` or `step: 1` (treating it as a 0-based array index) silently no-ops or clamps rather than erroring, which is easy to miss. Confirmed by comparing a light's `actions/.../dimmer_step` retained value against the same light's `powernet/.../outputs/{n}/settings.value` (published alongside the Hub's own `dimmer_table` array, so unambiguously the true 0-based array index) — the two are consistently offset by exactly 1. To set brightness index `i` (0-based, into the array above), send `step: i + 1`.
 
 **Multi-output (e.g. Fans — two rails simultaneously):**
 ```json

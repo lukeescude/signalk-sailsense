@@ -359,6 +359,17 @@ const PUMP_GROUPS = [
   { title: 'Water Pumps', group: 'water_pump',  names: ['Fresh water pump', 'Port grey water pump', 'STBD grey water pump'] },
 ];
 
+// "Shortcut" lights live under sailsense.contents.action_shortcut.{key} rather than
+// sailsense.actions.{group}.{key} — a different Hub subsystem, but same on/off tile UI.
+// Keys are already the Hub's own lowercase snake_case names (no toKey() transform).
+// "Steaming" is displayed rather than the Hub's internal "Engine" name — it's a steaming light.
+const SHORTCUT_LIGHTS = [
+  { key: 'navigation_light', label: 'Navigation' },
+  { key: 'engine_light',     label: 'Steaming' },
+  { key: 'anchor_light',     label: 'Anchor' },
+  { key: 'deck_light',       label: 'Deck' },
+];
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 // Flat map of Signal K path → value, e.g. "sailsense.batteries.Main.Bank1.voltage" → 12.6
@@ -1026,8 +1037,11 @@ function lightDisplayLabel(label) {
   return toTitleCase(label.replace(/\s+(light|pump)$/i, ''));
 }
 
-function buildActionTile(label, group, key) {
-  return `<button type="button" class="light-item" data-group="${group}" data-key="${key}">
+// skPath is the Signal K path relative to "sailsense.", e.g. "actions.exterior_light.Submarine_light"
+// or "contents.action_shortcut.navigation_light" — the latter lives under a different top-level
+// prefix than the rest of the lights/pumps, hence a single opaque path rather than group+key.
+function buildActionTile(label, skPath) {
+  return `<button type="button" class="light-item" data-path="${skPath}">
     <div class="light-dot"></div>
     <span class="light-name">${label}</span>
   </button>`;
@@ -1036,16 +1050,16 @@ function buildActionTile(label, group, key) {
 // Brightness % per dimmer step index (0-5) — see DEVICES.md "Dimmable Lights".
 const DIMMER_STEPS = [15, 25, 35, 45, 55, 100];
 
-function buildDimmableTile(label, group, key) {
+function buildDimmableTile(label, skPath) {
   var steps = DIMMER_STEPS.map(function(_, i) {
     return '<button type="button" class="dimmer-step" data-step="' + i + '"></button>';
   }).join('');
   return '<div class="light-card">' +
-    '<button type="button" class="light-toggle" data-group="' + group + '" data-key="' + key + '">' +
+    '<button type="button" class="light-toggle" data-path="' + skPath + '">' +
       '<div class="light-dot"></div>' +
       '<span class="light-name">' + label + '</span>' +
     '</button>' +
-    '<div class="dimmer-row" data-group="' + group + '" data-key="' + key + '">' +
+    '<div class="dimmer-row" data-path="' + skPath + '">' +
       steps +
       '<span class="dimmer-pct">—</span>' +
     '</div>' +
@@ -1054,21 +1068,20 @@ function buildDimmableTile(label, group, key) {
 
 function bindActionTile(tile) {
   tile.addEventListener('click', function() {
-    var group = tile.dataset.group;
-    var key = tile.dataset.key;
-    var path = 'sailsense.actions.' + group + '.' + key + '.state';
+    var skPath = tile.dataset.path;
+    var path = 'sailsense.' + skPath + '.state';
     var newVal = !isOn(state[path]);
     // Optimistic update, same pattern as bindBreakerTile.
     state[path] = newVal ? 'on' : 'off';
     tile.querySelector('.light-dot').className = 'light-dot' + (newVal ? ' on' : '');
-    toggleAction(group, key, newVal);
+    toggleAction(skPath, newVal);
   });
 }
 
-// The Hub's own sailsense.actions.{group}.{key}.dimmer_step topic reports a 1-based "Level 1-6"
-// (confirmed by comparing it against the same light's powernet/.../outputs/{n}/settings.value,
-// the true 0-based dimmer_table index — the two are consistently offset by exactly 1). Convert
-// to our 0-based DIMMER_STEPS index before using it for display.
+// The Hub's own dimmer_step status topic reports a 1-based "Level 1-6" (confirmed by comparing
+// it against the same light's powernet/.../outputs/{n}/settings.value, the true 0-based
+// dimmer_table index — the two are consistently offset by exactly 1). Convert to our 0-based
+// DIMMER_STEPS index before using it for display.
 function hubStepToIndex(hubStep) {
   return hubStep != null ? Number(hubStep) - 1 : null;
 }
@@ -1083,9 +1096,8 @@ function updateDimmerRow(row, step) {
 }
 
 function bindDimmerRow(row) {
-  var group = row.dataset.group;
-  var key = row.dataset.key;
-  var path = 'sailsense.actions.' + group + '.' + key + '.dimmer_step';
+  var skPath = row.dataset.path;
+  var path = 'sailsense.' + skPath + '.dimmer_step';
   var buttons = row.querySelectorAll('.dimmer-step');
   for (var i = 0; i < buttons.length; i++) {
     buttons[i].addEventListener('click', function(e) {
@@ -1094,7 +1106,7 @@ function bindDimmerRow(row) {
       // 1-based dimmer_step convention, since that's what live WS updates will report.
       state[path] = step + 1;
       updateDimmerRow(row, step);
-      setDimmerStep(group, key, step);
+      setDimmerStep(skPath, step);
     });
   }
 }
@@ -1112,10 +1124,15 @@ function initLights() {
       if (s !== section) continue;
       const built = names.map(n => {
         var label = lightDisplayLabel(prefix + toLabel(n));
-        var key = toKey(n);
-        return dimmable ? buildDimmableTile(label, group, key) : buildActionTile(label, group, key);
+        var skPath = 'actions.' + group + '.' + toKey(n);
+        return dimmable ? buildDimmableTile(label, skPath) : buildActionTile(label, skPath);
       }).join('');
       if (dimmable) dimmableItems += built; else plainItems += built;
+    }
+    if (section === 'Exterior Lights') {
+      plainItems += SHORTCUT_LIGHTS.map(({ key, label }) =>
+        buildActionTile(label, 'contents.action_shortcut.' + key)
+      ).join('');
     }
     html += `<div class="light-section">
       <div class="light-section-title">${section}</div>
@@ -1128,7 +1145,7 @@ function initLights() {
     html += `<div class="light-section">
       <div class="light-section-title">${title}</div>
       <div class="light-grid">
-        ${names.map(n => buildActionTile(lightDisplayLabel(toLabel(n)), group, toKey(n))).join('')}
+        ${names.map(n => buildActionTile(lightDisplayLabel(toLabel(n)), 'actions.' + group + '.' + toKey(n))).join('')}
       </div>
     </div>`;
   }
@@ -1144,14 +1161,14 @@ function renderLights() {
   var tiles = document.querySelectorAll('.light-item, .light-toggle');
   for (var i = 0; i < tiles.length; i++) {
     var tile = tiles[i];
-    var path = 'sailsense.actions.' + tile.dataset.group + '.' + tile.dataset.key + '.state';
+    var path = 'sailsense.' + tile.dataset.path + '.state';
     var on = isOn(state[path]);
     tile.querySelector('.light-dot').className = 'light-dot' + (on ? ' on' : '');
   }
   var dimmerRows = document.querySelectorAll('.dimmer-row');
   for (var i = 0; i < dimmerRows.length; i++) {
     var row = dimmerRows[i];
-    var path = 'sailsense.actions.' + row.dataset.group + '.' + row.dataset.key + '.dimmer_step';
+    var path = 'sailsense.' + row.dataset.path + '.dimmer_step';
     updateDimmerRow(row, hubStepToIndex(state[path]));
   }
 }
@@ -1280,12 +1297,12 @@ function toggleBreaker(key, newValue) {
   putState('sailsense/breakers/' + key + '/state', newValue);
 }
 
-function toggleAction(group, key, newValue) {
-  putState('sailsense/actions/' + group + '/' + key + '/state', newValue);
+function toggleAction(skPath, newValue) {
+  putState('sailsense/' + skPath.replace(/\./g, '/') + '/state', newValue);
 }
 
-function setDimmerStep(group, key, step) {
-  putState('sailsense/actions/' + group + '/' + key + '/dimmer_step', step);
+function setDimmerStep(skPath, step) {
+  putState('sailsense/' + skPath.replace(/\./g, '/') + '/dimmer_step', step);
 }
 
 fetchVesselName();

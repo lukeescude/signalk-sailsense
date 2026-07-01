@@ -127,6 +127,17 @@ const ACTION_MAP = {
 // [15, 25, 35, 45, 55, 100] %) in addition to plain on/off. See DEVICES.md "Dimmable Lights".
 const DIMMABLE_GROUPS = ['nacelle_lights'];
 
+// "Shortcut" lights live under contents/action_shortcut rather than actions/{group}, and their
+// keys are already the Hub's own lowercase snake_case names (no toKey() transform needed).
+// Verified live against the real Hub: unlike ACTION_MAP (single-name command topic), this
+// category needs the name doubled in the command topic, same as BREAKER_MAP.
+const SHORTCUT_MAP = {
+  navigation_light: { name: 'navigation_light', outputs: [{ nPow: 1, output: 4 }, { nPow: 2, output: 6 }] },
+  engine_light:     { name: 'engine_light',     outputs: [{ nPow: 2, output: 2 }] },
+  deck_light:       { name: 'deck_light',       outputs: [{ nPow: 2, output: 12 }] },
+  anchor_light:     { name: 'anchor_light',     outputs: [{ nPow: 2, output: 1 }] },
+};
+
 // Exported for testing
 module.exports = function(app) {
   let client = null;
@@ -273,6 +284,14 @@ module.exports = function(app) {
               }
             );
           });
+        });
+
+        Object.keys(SHORTCUT_MAP).forEach(key => {
+          const shortcut = SHORTCUT_MAP[key];
+          const mqttTopic = `contents/action_shortcut/children/${shortcut.name}/children/${shortcut.name}`;
+          app.registerPutHandler('vessels.self', `sailsense.contents.action_shortcut.${key}.state`,
+            (ctx, path, value, done) => publishToggle(shortcut, mqttTopic, value, done)
+          );
         });
       }
 
