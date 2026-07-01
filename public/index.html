@@ -165,6 +165,35 @@ nav button:hover:not(.active) { color: var(--text); }
 .light-dot.on { background: #fbbf24; box-shadow: 0 0 7px #fbbf24; }
 .light-name { font-size: 1rem; }
 
+/* Dimmable lights — card wraps a plain toggle row plus a 6-step brightness bar */
+.dimmer-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); margin-bottom: 0.75rem; }
+.light-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1.1rem 1.25rem;
+}
+.light-toggle {
+  background: none; border: none; padding: 0; margin: 0 0 0.85rem; width: 100%;
+  display: flex; align-items: center;
+  cursor: pointer; touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none; appearance: none;
+  font-family: inherit; font-size: inherit; color: inherit;
+  text-align: left;
+}
+.dimmer-row { display: flex; align-items: center; }
+.dimmer-step {
+  flex: 1; height: 30px; margin-right: 4px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 0;
+  cursor: pointer; touch-action: manipulation;
+  -webkit-appearance: none; appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s, border-color 0.2s;
+}
+.dimmer-step:last-of-type { margin-right: 0.6rem; }
+.dimmer-step.filled { background: #fbbf24; border-color: #fbbf24; }
+.dimmer-pct { font-size: 0.8rem; color: var(--muted); flex-shrink: 0; min-width: 2.6rem; text-align: right; }
+
 .placeholder { color: var(--muted); font-size: 0.9rem; padding: 3rem 0; text-align: center; }
 
 /* Home */
@@ -320,7 +349,7 @@ const BREAKERS = [
 // underlying `group` (Signal K action group) each entry maps to.
 const LIGHT_GROUPS = [
   { section: 'Exterior Lights', group: 'exterior_light',  names: ['Submarine light', 'Foredeck courtesy light', 'Under bridge deck light', 'Cockpit courtesy light', 'Spreader light'] },
-  { section: 'Interior Lights', group: 'nacelle_lights',  names: ['Saloon light', 'Saloon indirect light', 'Cockpit light'] },
+  { section: 'Interior Lights', group: 'nacelle_lights',  names: ['Saloon light', 'Saloon indirect light', 'Cockpit light'], dimmable: true },
   { section: 'Interior Lights', group: 'port_lights',     names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Port ' },
   { section: 'Interior Lights', group: 'stbd_lights',     names: ['reading light', 'rear cabin light', 'corridor light', 'front cabin light'], prefix: 'Starboard ' },
 ];
@@ -1004,6 +1033,25 @@ function buildActionTile(label, group, key) {
   </button>`;
 }
 
+// Brightness % per dimmer step index (0-5) — see DEVICES.md "Dimmable Lights".
+const DIMMER_STEPS = [15, 25, 35, 45, 55, 100];
+
+function buildDimmableTile(label, group, key) {
+  var steps = DIMMER_STEPS.map(function(_, i) {
+    return '<button type="button" class="dimmer-step" data-step="' + i + '"></button>';
+  }).join('');
+  return '<div class="light-card">' +
+    '<button type="button" class="light-toggle" data-group="' + group + '" data-key="' + key + '">' +
+      '<div class="light-dot"></div>' +
+      '<span class="light-name">' + label + '</span>' +
+    '</button>' +
+    '<div class="dimmer-row" data-group="' + group + '" data-key="' + key + '">' +
+      steps +
+      '<span class="dimmer-pct">—</span>' +
+    '</div>' +
+  '</div>';
+}
+
 function bindActionTile(tile) {
   tile.addEventListener('click', function() {
     var group = tile.dataset.group;
@@ -1017,21 +1065,62 @@ function bindActionTile(tile) {
   });
 }
 
+// The Hub's own sailsense.actions.{group}.{key}.dimmer_step topic reports a 1-based "Level 1-6"
+// (confirmed by comparing it against the same light's powernet/.../outputs/{n}/settings.value,
+// the true 0-based dimmer_table index — the two are consistently offset by exactly 1). Convert
+// to our 0-based DIMMER_STEPS index before using it for display.
+function hubStepToIndex(hubStep) {
+  return hubStep != null ? Number(hubStep) - 1 : null;
+}
+
+function updateDimmerRow(row, step) {
+  var buttons = row.querySelectorAll('.dimmer-step');
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].className = 'dimmer-step' + (step != null && i <= step ? ' filled' : '');
+  }
+  var pct = row.querySelector('.dimmer-pct');
+  pct.textContent = (step != null && DIMMER_STEPS[step] != null) ? DIMMER_STEPS[step] + '%' : '—';
+}
+
+function bindDimmerRow(row) {
+  var group = row.dataset.group;
+  var key = row.dataset.key;
+  var path = 'sailsense.actions.' + group + '.' + key + '.dimmer_step';
+  var buttons = row.querySelectorAll('.dimmer-step');
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].addEventListener('click', function(e) {
+      var step = Number(e.currentTarget.dataset.step);
+      // Optimistic update, same pattern as bindActionTile. state[path] mirrors the Hub's own
+      // 1-based dimmer_step convention, since that's what live WS updates will report.
+      state[path] = step + 1;
+      updateDimmerRow(row, step);
+      setDimmerStep(group, key, step);
+    });
+  }
+}
+
 function initLights() {
   var container = document.getElementById('tab-lights');
   var html = '';
 
   for (const section of ['Exterior Lights', 'Interior Lights']) {
-    let items = '';
-    for (const { section: s, group, names, prefix = '' } of LIGHT_GROUPS) {
+    // Dimmable cards need extra width for the 6-segment brightness bar, so they render in
+    // their own wider grid rather than mixing track sizes with the plain toggle tiles.
+    let dimmableItems = '';
+    let plainItems = '';
+    for (const { section: s, group, names, prefix = '', dimmable } of LIGHT_GROUPS) {
       if (s !== section) continue;
-      items += names.map(n => buildActionTile(lightDisplayLabel(prefix + toLabel(n)), group, toKey(n))).join('');
+      const built = names.map(n => {
+        var label = lightDisplayLabel(prefix + toLabel(n));
+        var key = toKey(n);
+        return dimmable ? buildDimmableTile(label, group, key) : buildActionTile(label, group, key);
+      }).join('');
+      if (dimmable) dimmableItems += built; else plainItems += built;
     }
     html += `<div class="light-section">
       <div class="light-section-title">${section}</div>
-      <div class="light-grid">
-        ${items}
-      </div>
+      ${dimmableItems ? `<div class="light-grid dimmer-grid">${dimmableItems}</div>` : ''}
+      ${plainItems ? `<div class="light-grid">${plainItems}</div>` : ''}
     </div>`;
   }
 
@@ -1045,17 +1134,25 @@ function initLights() {
   }
 
   container.innerHTML = html;
-  var tiles = container.querySelectorAll('.light-item');
+  var tiles = container.querySelectorAll('.light-item, .light-toggle');
   for (var i = 0; i < tiles.length; i++) { bindActionTile(tiles[i]); }
+  var dimmerRows = container.querySelectorAll('.dimmer-row');
+  for (var i = 0; i < dimmerRows.length; i++) { bindDimmerRow(dimmerRows[i]); }
 }
 
 function renderLights() {
-  var tiles = document.querySelectorAll('.light-item');
+  var tiles = document.querySelectorAll('.light-item, .light-toggle');
   for (var i = 0; i < tiles.length; i++) {
     var tile = tiles[i];
     var path = 'sailsense.actions.' + tile.dataset.group + '.' + tile.dataset.key + '.state';
     var on = isOn(state[path]);
     tile.querySelector('.light-dot').className = 'light-dot' + (on ? ' on' : '');
+  }
+  var dimmerRows = document.querySelectorAll('.dimmer-row');
+  for (var i = 0; i < dimmerRows.length; i++) {
+    var row = dimmerRows[i];
+    var path = 'sailsense.actions.' + row.dataset.group + '.' + row.dataset.key + '.dimmer_step';
+    updateDimmerRow(row, hubStepToIndex(state[path]));
   }
 }
 
@@ -1185,6 +1282,10 @@ function toggleBreaker(key, newValue) {
 
 function toggleAction(group, key, newValue) {
   putState('sailsense/actions/' + group + '/' + key + '/state', newValue);
+}
+
+function setDimmerStep(group, key, step) {
+  putState('sailsense/actions/' + group + '/' + key + '/dimmer_step', step);
 }
 
 fetchVesselName();

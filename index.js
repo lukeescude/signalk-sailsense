@@ -123,6 +123,10 @@ const ACTION_MAP = {
   },
 };
 
+// Action groups whose lights support a 6-step dimmer (step 0-5 → brightness
+// [15, 25, 35, 45, 55, 100] %) in addition to plain on/off. See DEVICES.md "Dimmable Lights".
+const DIMMABLE_GROUPS = ['nacelle_lights'];
+
 // Exported for testing
 module.exports = function(app) {
   let client = null;
@@ -243,6 +247,30 @@ module.exports = function(app) {
             const mqttTopic = `actions/children/${group}/children/${action.name}`;
             app.registerPutHandler('vessels.self', `sailsense.actions.${group}.${key}.state`,
               (ctx, path, value, done) => publishToggle(action, mqttTopic, value, done)
+            );
+          });
+        });
+
+        DIMMABLE_GROUPS.forEach(group => {
+          Object.keys(ACTION_MAP[group]).forEach(key => {
+            const action = ACTION_MAP[group][key];
+            const mqttTopic = `actions/children/${group}/children/${action.name}`;
+            app.registerPutHandler('vessels.self', `sailsense.actions.${group}.${key}.dimmer_step`,
+              (ctx, path, value, done) => {
+                if (!client) return done({ state: 'COMPLETED' });
+                // `value` here is our UI's 0-based DIMMER_STEPS array index (0-5). The Hub's own
+                // dimmer_step status topic (and, it appears, its command handler) uses a 1-based
+                // "Level 1-6" convention instead — confirmed by comparing the retained
+                // actions/.../dimmer_step value against the same light's
+                // powernet/.../outputs/{n}/settings.value (the true 0-based dimmer_table index),
+                // which are consistently offset by exactly 1. Translate here so the rest of the
+                // app can keep using plain 0-based indices.
+                const index = Math.max(0, Math.min(5, Math.round(Number(value))));
+                const payload = { nPow: action.outputs[0].nPow, output: action.outputs[0].output, step: index + 1, topic: mqttTopic };
+                if (!hubHostname) return done({ state: 'COMPLETED' });
+                client.publish(`cmd/${hubHostname}/send`, JSON.stringify(payload), { qos: 1, retain: false });
+                done({ state: 'COMPLETED' });
+              }
             );
           });
         });
